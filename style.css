@@ -1,0 +1,473 @@
+/* =====================================================
+   SISTEMA HEURÍSTICO EVOLUTIVO
+   style.css
+===================================================== */
+
+/* ---------- VARIABLES ---------- */
+
+:root{
+
+    --azul:#063565;
+    --azul2:#1f5da8;
+    --rosa:#F12598;
+
+    --gris:#f4f6f9;
+    --gris2:#d7dde5;
+
+    --texto:#2c3e50;
+
+    --blanco:#ffffff;
+
+    --verde:#28a745;
+    --rojo:#dc3545;
+    --amarillo:#ffc107;
+
+    --sombra:0px 10px 25px rgba(0,0,0,.08);
+
+    --radio:16px;
+
+}
+
+/* ---------- GENERAL ---------- */
+
+*{
+
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+
+}
+
+html{
+
+    scroll-behavior:smooth;
+
+}
+
+body{
+
+    font-family:'Poppins',sans-serif;
+
+    background:var(--gris);
+
+    color:var(--texto);
+
+}
+
+/* ---------- NAVBAR ---------- */
+
+.navbar{
+
+    background:linear-gradient(90deg,var(--azul),var(--azul2));
+
+}
+
+.navbar-brand{
+
+    font-size:1.4rem;
+
+}
+
+.nav-link{
+
+    color:white !important;
+
+    transition:.25s;
+
+}
+
+.nav-link:hover{
+
+    opacity:.7;
+
+}
+
+/* ---------- HERO ---------- */
+
+.hero{
+
+    background:linear-gradient(120deg,var(--azul),var(--azul2));
+
+    color:white;
+
+    padding:70px 0;
+
+}
+
+.hero h1{
+
+    font-weight:700;
+
+    margin-bottom:15px;
+
+}
+
+.hero p{
+
+    font-size:1.1rem;
+
+    opacity:.9;
+
+    max-width:700px;
+
+}
+
+/* ---------- CARDS DASHBOARD ---------- */
+
+.dashboard-card{
+
+    border:none;
+
+    border-radius:var(--radio);
+
+    box-shadow:var(--sombra);
+
+    transition:.3s;
+
+}
+
+.dashboard-card:hover{
+
+    transform:translateY(-8px);
+
+}
+
+.dashboard-card .card-body{
+
+    text-align:center;
+
+    padding:30px;
+
+}
+
+.icon-dashboard{
+
+    font-size:45px;
+
+    color:var(--rosa);
+
+    margin-bottom:20px;
+
+}
+
+.dashboard-card h6{
+
+    color:#666;
+
+    margin-bottom:10px;
+
+}
+
+.dashboard-card h2{
+
+    font-weight:700;
+
+    color:var(--azul);
+
+}
+
+/* ---------- MENU ---------- */
+
+.menu-card{
+
+    background:white;
+
+    border-radius:var(--radio);
+
+    box-shadow:var(--sombra);
+
+    padding:30px;
+
+    text-align:center;
+
+    transition:.30s;
+
+    height:100%;
+
+}
+
+.menu-card:hover{
+
+    transform:translateY(-10px);
+
+}
+
+.menu-card i{
+
+    font-size:60px;
+
+    color:var(--rosa);
+
+}
+
+.menu-card h5{
+
+    margin-top:20px;
+
+    margin-bottom:15px;
+
+    font-weight:600;
+
+}
+
+.menu-card p{
+
+    color:#666;
+
+    min-height:50px;
+
+}
+
+.menu-card .btn{
+
+    width:100%;
+
+    border-radius:50px;
+
+}
+
+/* ---------- BOTONES ---------- */
+
+.btn-primary{
+
+    background:var(--azul);
+
+    border:none;
+
+}
+
+.btn-primary:hover{
+
+    background:var(--rosa);
+
+}
+
+/* ---------- TABLAS ---------- */
+
+.table{
+
+    background:white;
+
+    border-radius:var(--radio);
+
+    overflow:hidden;
+
+    box-shadow:var(--sombra);
+
+}
+
+.table thead{
+
+    background:var(--azul);
+
+    color:white;
+
+}
+
+.table th{
+
+    padding:15px;
+
+}
+
+.table td{
+
+    vertical-align:middle;
+
+}
+
+/* ---------- FORMULARIOS ---------- */
+
+.form-control{
+
+    border-radius:12px;
+
+    padding:12px;
+
+}
+
+.form-control:focus{
+
+    border-color:var(--azul);
+
+    box-shadow:none;
+
+}
+
+.form-label{
+
+    font-weight:600;
+
+}
+
+/* ---------- TITULOS ---------- */
+
+.section-title{
+
+    font-size:2rem;
+
+    font-weight:700;
+
+    color:var(--azul);
+
+    margin-bottom:30px;
+
+}
+
+/* ---------- TARJETAS ---------- */
+
+.card{
+
+    border:none;
+
+    border-radius:var(--radio);
+
+}
+
+/* ---------- BADGES ---------- */
+
+.badge-ranking{
+
+    background:var(--rosa);
+
+    color:white;
+
+    padding:8px 14px;
+
+    border-radius:20px;
+
+}
+
+/* ---------- ALERTAS ---------- */
+
+.alert{
+
+    border:none;
+
+    border-radius:15px;
+
+}
+
+/* ---------- FOOTER ---------- */
+
+footer{
+
+    background:var(--azul);
+
+    color:white;
+
+    text-align:center;
+
+    padding:20px;
+
+    margin-top:50px;
+
+}
+
+/* ---------- SCROLL ---------- */
+
+::-webkit-scrollbar{
+
+    width:10px;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:var(--azul);
+
+    border-radius:50px;
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:#ddd;
+
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+@media(max-width:992px){
+
+.hero{
+
+    text-align:center;
+
+}
+
+.hero h1{
+
+    font-size:2rem;
+
+}
+
+}
+
+@media(max-width:768px){
+
+.dashboard-card{
+
+    margin-bottom:20px;
+
+}
+
+.menu-card{
+
+    margin-bottom:20px;
+
+}
+
+.hero{
+
+    padding:50px 20px;
+
+}
+
+.hero p{
+
+    font-size:1rem;
+
+}
+
+.section-title{
+
+    font-size:1.5rem;
+
+}
+
+}
+
+@media(max-width:576px){
+
+.navbar-brand{
+
+    font-size:1rem;
+
+}
+
+.hero h1{
+
+    font-size:1.7rem;
+
+}
+
+.dashboard-card h2{
+
+    font-size:2rem;
+
+}
+
+.icon-dashboard{
+
+    font-size:35px;
+
+}
+
+.menu-card i{
+
+    font-size:45px;
+
+}
+
+}
