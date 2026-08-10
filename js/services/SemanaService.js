@@ -1,13 +1,14 @@
 /**********************************************************************
  * SISTEMA HEURÍSTICO EVOLUTIVO
- * Archivo: services/SemanaService.js
+ * Archivo: js/Services/SemanaService.js
  *
- * Lógica de negocio de las semanas
+ * Servicio encargado de administrar las semanas de sorteos.
  **********************************************************************/
 
 import Database from "../database/Database.js";
 import Semana from "../models/Semana.js";
 import { CONFIG } from "../config.js";
+
 
 export default class SemanaService {
 
@@ -15,9 +16,10 @@ export default class SemanaService {
 
         this.database = new Database();
 
-        this.collection = CONFIG.COLLECTIONS.SEMANAS;
-
+        this.collection =
+            CONFIG.COLLECTIONS.SEMANAS;
     }
+
 
     /*==============================================================
         GENERAR ID
@@ -25,13 +27,19 @@ export default class SemanaService {
 
     generarId(numeroSemana) {
 
-        return CONFIG.ID_PREFIX +
-            String(numeroSemana).padStart(
-                CONFIG.ID_DIGITOS,
-                "0"
-            );
+        return (
 
+            CONFIG.ID_PREFIX +
+
+            String(numeroSemana)
+                .padStart(
+                    CONFIG.ID_DIGITOS,
+                    "0"
+                )
+
+        );
     }
+
 
     /*==============================================================
         EXISTE SEMANA
@@ -39,43 +47,64 @@ export default class SemanaService {
 
     async existe(numeroSemana) {
 
+        const id =
+            this.generarId(
+                numeroSemana
+            );
+
         return await this.database.exists(
 
             this.collection,
 
-            this.generarId(numeroSemana)
+            id
 
         );
-
     }
+
 
     /*==============================================================
         CREAR SEMANA
     ==============================================================*/
 
-    async crear(semana, fecha, numeros) {
+    async crear(
+        numeroSemana,
+        fecha,
+        numeros
+    ) {
 
-        const nuevaSemana = new Semana(
+        const nuevaSemana =
+            new Semana(
 
-            semana,
-            fecha,
-            numeros
+                numeroSemana,
+                fecha,
+                numeros
 
-        );
+            );
+
+
+        /*
+         * Validamos ANTES de enviar información
+         * a Firebase.
+         */
 
         nuevaSemana.validar();
 
-        const existe = await this.existe(semana);
+
+        const existe =
+            await this.existe(
+                numeroSemana
+            );
+
 
         if (existe) {
 
             throw new Error(
 
-                `La semana ${semana} ya existe.`
+                `La semana ${numeroSemana} ya existe.`
 
             );
-
         }
+
 
         await this.database.create(
 
@@ -87,19 +116,96 @@ export default class SemanaService {
 
         );
 
-        return nuevaSemana;
 
+        return nuevaSemana;
     }
 
+
     /*==============================================================
-        ACTUALIZAR
+        OBTENER SEMANA
     ==============================================================*/
 
-    async actualizar(semana, datos) {
+    async obtener(numeroSemana) {
 
-        const id = this.generarId(semana);
+        const id =
+            this.generarId(
+                numeroSemana
+            );
 
-        datos.modificado = new Date().toISOString();
+        return await this.database.read(
+
+            this.collection,
+
+            id
+
+        );
+    }
+
+
+    /*==============================================================
+        OBTENER TODAS
+    ==============================================================*/
+
+    async obtenerTodas(
+        direccion = "asc"
+    ) {
+
+        return await this.database.readAll(
+
+            this.collection,
+
+            "semana",
+
+            direccion
+
+        );
+    }
+
+
+    /*==============================================================
+        ACTUALIZAR SEMANA
+    ==============================================================*/
+
+    async actualizar(
+        numeroSemana,
+        datos
+    ) {
+
+        const id =
+            this.generarId(
+                numeroSemana
+            );
+
+
+        const existe =
+            await this.database.exists(
+
+                this.collection,
+
+                id
+
+            );
+
+
+        if (!existe) {
+
+            throw new Error(
+
+                `La semana ${numeroSemana} no existe.`
+
+            );
+        }
+
+
+        const datosActualizados = {
+
+            ...datos,
+
+            modificado:
+                new Date().toISOString()
+
+        };
+
 
         await this.database.update(
 
@@ -107,19 +213,48 @@ export default class SemanaService {
 
             id,
 
-            datos
+            datosActualizados
 
         );
 
+
+        return true;
     }
+
 
     /*==============================================================
         ELIMINAR
     ==============================================================*/
 
-    async eliminar(numeroSemana) {
+    async eliminar(
+        numeroSemana
+    ) {
 
-        const id = this.generarId(numeroSemana);
+        const id =
+            this.generarId(
+                numeroSemana
+            );
+
+
+        const existe =
+            await this.database.exists(
+
+                this.collection,
+
+                id
+
+            );
+
+
+        if (!existe) {
+
+            throw new Error(
+
+                `La semana ${numeroSemana} no existe.`
+
+            );
+        }
+
 
         await this.database.delete(
 
@@ -129,51 +264,24 @@ export default class SemanaService {
 
         );
 
+
+        return true;
     }
 
-    /*==============================================================
-        OBTENER UNA SEMANA
-    ==============================================================*/
-
-    async obtener(numeroSemana) {
-
-        return await this.database.read(
-
-            this.collection,
-
-            this.generarId(numeroSemana)
-
-        );
-
-    }
 
     /*==============================================================
-        OBTENER TODAS
-    ==============================================================*/
-
-    async obtenerTodas() {
-
-        return await this.database.readAll(
-
-            this.collection,
-
-            "semana"
-
-        );
-
-    }
-
-    /*==============================================================
-        TOTAL
+        TOTAL DE SEMANAS
     ==============================================================*/
 
     async totalSemanas() {
 
-        const semanas = await this.obtenerTodas();
+        return await this.database.count(
 
-        return semanas.length;
+            this.collection
 
+        );
     }
+
 
     /*==============================================================
         TOTAL DE NÚMEROS ANALIZADOS
@@ -181,13 +289,27 @@ export default class SemanaService {
 
     async totalNumeros() {
 
-        const semanas = await this.obtenerTodas();
+        const semanas =
+            await this.obtenerTodas();
 
-        return semanas.length *
+        return semanas.reduce(
 
-            CONFIG.NUMEROS_POR_SEMANA;
+            (total, semana) =>
 
+                total +
+                (
+                    Array.isArray(
+                        semana.numeros
+                    )
+                        ? semana.numeros.length
+                        : 0
+                ),
+
+            0
+
+        );
     }
+
 
     /*==============================================================
         ÚLTIMA SEMANA
@@ -195,49 +317,95 @@ export default class SemanaService {
 
     async ultimaSemana() {
 
-        const semanas = await this.obtenerTodas();
+        const semanas =
+            await this.obtenerTodas(
+                "desc"
+            );
 
-        if (semanas.length === 0)
+
+        if (
+            !semanas ||
+            semanas.length === 0
+        ) {
 
             return null;
+        }
 
-        return semanas[
 
-            semanas.length - 1
-
-        ];
-
+        return semanas[0];
     }
+
+
+    /*==============================================================
+        PRIMERA SEMANA
+    ==============================================================*/
+
+    async primeraSemana() {
+
+        const semanas =
+            await this.obtenerTodas(
+                "asc"
+            );
+
+
+        if (
+            !semanas ||
+            semanas.length === 0
+        ) {
+
+            return null;
+        }
+
+
+        return semanas[0];
+    }
+
 
     /*==============================================================
         BUSCAR NÚMERO
     ==============================================================*/
 
-    async buscarNumero(numero) {
+    async buscarNumero(
+        numero
+    ) {
 
-        const semanas = await this.obtenerTodas();
+        const semanas =
+            await this.obtenerTodas();
+
 
         return semanas.filter(
 
             semana =>
 
-            semana.numeros.includes(numero)
+                Array.isArray(
+                    semana.numeros
+                ) &&
+
+                semana.numeros.includes(
+                    Number(numero)
+                )
 
         );
-
     }
+
 
     /*==============================================================
-        VALIDAR SI EL NÚMERO EXISTE
+        APARECE NÚMERO
     ==============================================================*/
 
-    async apareceNumero(numero) {
+    async apareceNumero(
+        numero
+    ) {
 
-        const resultado = await this.buscarNumero(numero);
+        const resultado =
+            await this.buscarNumero(
+                numero
+            );
+
 
         return resultado.length > 0;
-
     }
+
 
     /*==============================================================
         EXPORTAR JSON
@@ -246,39 +414,100 @@ export default class SemanaService {
     async exportarJSON() {
 
         return await this.obtenerTodas();
-
     }
+
 
     /*==============================================================
         IMPORTAR JSON
     ==============================================================*/
 
-    async importarJSON(listaSemanas) {
+    async importarJSON(
+        listaSemanas
+    ) {
 
-        for (const datos of listaSemanas) {
+        if (
+            !Array.isArray(
+                listaSemanas
+            )
+        ) {
 
-            const existe = await this.existe(
-
-                datos.semana
-
+            throw new Error(
+                "El archivo JSON debe contener una lista de semanas."
             );
+        }
 
-            if (!existe) {
 
-                await this.database.create(
+        let importadas = 0;
+        let omitidas = 0;
 
-                    this.collection,
 
-                    datos.id,
+        for (
+            const datos
+            of listaSemanas
+        ) {
 
-                    datos
+            if (
+                !datos ||
+                datos.semana === undefined
+            ) {
+
+                omitidas++;
+
+                continue;
+            }
+
+
+            const existe =
+                await this.existe(
+                    datos.semana
+                );
+
+
+            if (existe) {
+
+                omitidas++;
+
+                continue;
+            }
+
+
+            const semana =
+                new Semana(
+
+                    datos.semana,
+
+                    datos.fecha,
+
+                    datos.numeros || []
 
                 );
 
-            }
 
+            semana.validar();
+
+
+            await this.database.create(
+
+                this.collection,
+
+                semana.id,
+
+                semana.toJSON()
+
+            );
+
+
+            importadas++;
         }
 
+
+        return {
+
+            importadas,
+
+            omitidas
+
+        };
     }
 
 }

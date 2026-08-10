@@ -1,4 +1,4 @@
-```javascript
+
 /**********************************************************************
  * SISTEMA HEURÍSTICO EVOLUTIVO
  *
@@ -2070,4 +2070,3 @@ export default class MotorRepeticion extends BaseMotor {
     }
 
 }
-```

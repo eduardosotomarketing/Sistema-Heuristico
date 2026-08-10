@@ -1,12 +1,23 @@
 /***********************************************************************
  * SISTEMA HEURÍSTICO EVOLUTIVO
- * Database.js
+ * Archivo: js/database/Database.js
  *
- * Clase genérica para Firestore
+ * Capa genérica de acceso a Firebase Firestore.
+ *
+ * Responsabilidades:
+ * - Crear documentos
+ * - Crear documentos con ID automático
+ * - Leer documentos
+ * - Leer colecciones
+ * - Actualizar documentos
+ * - Eliminar documentos
+ * - Comprobar existencia
+ *
+ * Esta clase NO contiene lógica del sistema de sorteos.
+ * La lógica de negocio pertenece a los Services y Motores.
  ***********************************************************************/
 
 import {
-
     collection,
     doc,
     getDoc,
@@ -16,66 +27,101 @@ import {
     updateDoc,
     deleteDoc,
     query,
-    where,
     orderBy
-
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 import { db } from "../firebase.js";
 
-export default class Database{
 
-    constructor(){
+export default class Database {
 
-        this.db=db;
+    constructor() {
 
+        if (!db) {
+
+            throw new Error(
+                "Firebase Firestore no está disponible."
+            );
+
+        }
+
+        this.db = db;
     }
+
 
     /*========================================================
-        OBTENER COLECCIÓN
+        COLECCIÓN
     ========================================================*/
 
-    collection(nombre){
+    collection(nombre) {
+
+        if (!nombre) {
+
+            throw new Error(
+                "Debe indicar el nombre de la colección."
+            );
+
+        }
 
         return collection(
-
             this.db,
-
             nombre
-
         );
-
     }
+
 
     /*========================================================
         DOCUMENTO
     ========================================================*/
 
-    document(nombre,id){
+    document(nombre, id) {
+
+        if (!nombre) {
+
+            throw new Error(
+                "Debe indicar el nombre de la colección."
+            );
+
+        }
+
+        if (!id) {
+
+            throw new Error(
+                "Debe indicar el ID del documento."
+            );
+
+        }
 
         return doc(
-
             this.db,
-
             nombre,
-
-            id
-
+            String(id)
         );
-
     }
 
+
     /*========================================================
-        CREAR
+        CREAR CON ID
     ========================================================*/
 
-    async create(collectionName,id,data){
+    async create(collectionName, id, data) {
 
-        try{
+        try {
+
+            if (!id) {
+
+                throw new Error(
+                    "No se puede crear un documento sin ID."
+                );
+
+            }
 
             await setDoc(
 
-                this.document(collectionName,id),
+                this.document(
+                    collectionName,
+                    id
+                ),
 
                 data
 
@@ -84,132 +130,184 @@ export default class Database{
             return true;
 
         }
+        catch (error) {
 
-        catch(error){
+            console.error(
+                "Database.create():",
+                error
+            );
 
-            console.error(error);
-
-            return false;
-
+            throw error;
         }
-
     }
 
+
     /*========================================================
-        AGREGAR AUTOMÁTICO
+        CREAR CON ID AUTOMÁTICO
     ========================================================*/
 
-    async add(collectionName,data){
+    async add(collectionName, data) {
 
-        try{
+        try {
 
-            const response=await addDoc(
+            const referencia = await addDoc(
 
-                this.collection(collectionName),
+                this.collection(
+                    collectionName
+                ),
 
                 data
 
             );
 
-            return response.id;
+            return referencia.id;
 
         }
+        catch (error) {
 
-        catch(error){
-
-            console.error(error);
-
-            return null;
-
-        }
-
-    }
-
-    /*========================================================
-        LEER
-    ========================================================*/
-
-    async read(collectionName,id){
-
-        try{
-
-            const documento=await getDoc(
-
-                this.document(collectionName,id)
-
+            console.error(
+                "Database.add():",
+                error
             );
 
-            if(documento.exists()){
+            throw error;
+        }
+    }
 
-                return documento.data();
+
+    /*========================================================
+        LEER DOCUMENTO
+    ========================================================*/
+
+    async read(collectionName, id) {
+
+        try {
+
+            const referencia = this.document(
+                collectionName,
+                id
+            );
+
+            const documento = await getDoc(
+                referencia
+            );
+
+            if (!documento.exists()) {
+
+                return null;
+            }
+
+            return {
+
+                id: documento.id,
+
+                ...documento.data()
+
+            };
+
+        }
+        catch (error) {
+
+            console.error(
+                "Database.read():",
+                error
+            );
+
+            throw error;
+        }
+    }
+
+
+    /*========================================================
+        LEER TODOS
+    ========================================================*/
+
+    async readAll(
+        collectionName,
+        orden = null,
+        direccion = "asc"
+    ) {
+
+        try {
+
+            let referencia =
+                this.collection(
+                    collectionName
+                );
+
+            /*
+             * Si se solicita ordenamiento,
+             * Firestore realizará la consulta ordenada.
+             */
+            if (orden) {
+
+                referencia = query(
+
+                    referencia,
+
+                    orderBy(
+                        orden,
+                        direccion
+                    )
+
+                );
 
             }
 
-            return null;
+            const snapshot =
+                await getDocs(
+                    referencia
+                );
 
-        }
+            const lista = [];
 
-        catch(error){
+            snapshot.forEach(
+                documento => {
 
-            console.error(error);
+                    lista.push({
 
-            return null;
+                        id: documento.id,
 
-        }
+                        ...documento.data()
 
-    }
+                    });
 
-    /*========================================================
-        TODOS
-    ========================================================*/
-
-    async readAll(collectionName,orden="id"){
-
-        try{
-
-            const consulta=query(
-
-                this.collection(collectionName),
-
-                orderBy(orden)
-
+                }
             );
-
-            const snapshot=await getDocs(consulta);
-
-            let lista=[];
-
-            snapshot.forEach(item=>{
-
-                lista.push(item.data());
-
-            });
 
             return lista;
 
         }
+        catch (error) {
 
-        catch(error){
+            console.error(
+                "Database.readAll():",
+                error
+            );
 
-            console.error(error);
-
-            return [];
-
+            throw error;
         }
-
     }
+
 
     /*========================================================
         ACTUALIZAR
     ========================================================*/
 
-    async update(collectionName,id,data){
+    async update(
+        collectionName,
+        id,
+        data
+    ) {
 
-        try{
+        try {
 
             await updateDoc(
 
-                this.document(collectionName,id),
+                this.document(
+                    collectionName,
+                    id
+                ),
 
                 data
 
@@ -218,59 +316,103 @@ export default class Database{
             return true;
 
         }
+        catch (error) {
 
-        catch(error){
+            console.error(
+                "Database.update():",
+                error
+            );
 
-            console.error(error);
-
-            return false;
-
+            throw error;
         }
-
     }
+
 
     /*========================================================
         ELIMINAR
     ========================================================*/
 
-    async delete(collectionName,id){
+    async delete(
+        collectionName,
+        id
+    ) {
 
-        try{
+        try {
 
             await deleteDoc(
 
-                this.document(collectionName,id)
+                this.document(
+                    collectionName,
+                    id
+                )
 
             );
 
             return true;
 
         }
+        catch (error) {
 
-        catch(error){
+            console.error(
+                "Database.delete():",
+                error
+            );
 
-            console.error(error);
-
-            return false;
-
+            throw error;
         }
-
     }
+
 
     /*========================================================
         EXISTE
     ========================================================*/
 
-    async exists(collectionName,id){
+    async exists(
+        collectionName,
+        id
+    ) {
 
-        const documento=await getDoc(
+        try {
 
-            this.document(collectionName,id)
+            const documento =
+                await getDoc(
 
-        );
+                    this.document(
+                        collectionName,
+                        id
+                    )
 
-        return documento.exists();
+                );
 
+            return documento.exists();
+
+        }
+        catch (error) {
+
+            console.error(
+                "Database.exists():",
+                error
+            );
+
+            throw error;
+        }
+    }
+
+
+    /*========================================================
+        CONTAR DOCUMENTOS
+    ========================================================*/
+
+    async count(
+        collectionName
+    ) {
+
+        const documentos =
+            await this.readAll(
+                collectionName
+            );
+
+        return documentos.length;
     }
 
 }
