@@ -75,17 +75,17 @@ Web
 
 export const firebaseConfig = {
 
-    apiKey: "TU_API_KEY",
+    apiKey: "AIzaSyAiB5iCBj5Bq8jyTCCAKT1SuXGldIybOQo",
 
-    authDomain: "TU_PROYECTO.firebaseapp.com",
+    authDomain: "sistema-heuristico.firebaseapp.com",
 
-    projectId: "TU_PROYECTO",
+    projectId: "sistema-heuristico",
 
-    storageBucket: "TU_PROYECTO.appspot.com",
+    storageBucket: "sistema-heuristico.firebasestorage.app",
 
-    messagingSenderId: "000000000000",
+    messagingSenderId: "196360741337",
 
-    appId: "1:000000:web:0000000000000000"
+    appId: "1:196360741337:web:535808b108e6c0250879c8"
 
 };
 

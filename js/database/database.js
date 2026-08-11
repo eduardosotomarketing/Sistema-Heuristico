@@ -1,10 +1,11 @@
+
 /***********************************************************************
  * SISTEMA HEURÍSTICO EVOLUTIVO
  * Archivo: js/database/Database.js
  *
  * Capa genérica de acceso a Firebase Firestore.
  *
- * Responsabilidades:
+ * RESPONSABILIDADES:
  * - Crear documentos
  * - Crear documentos con ID automático
  * - Leer documentos
@@ -12,12 +13,14 @@
  * - Actualizar documentos
  * - Eliminar documentos
  * - Comprobar existencia
+ * - Contar documentos
  *
- * Esta clase NO contiene lógica del sistema de sorteos.
- * La lógica de negocio pertenece a los Services y Motores.
+ * Esta clase NO contiene lógica de sorteos.
+ * La lógica pertenece a Services y Motores.
  ***********************************************************************/
 
 import {
+
     collection,
     doc,
     getDoc,
@@ -28,24 +31,35 @@ import {
     deleteDoc,
     query,
     orderBy
+
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
-import { db } from "../firebase.js";
+import {
+    db
+} from "../firebase.js";
 
 
 export default class Database {
+
+
+    /*========================================================
+        CONSTRUCTOR
+    ========================================================*/
 
     constructor() {
 
         if (!db) {
 
             throw new Error(
+
                 "Firebase Firestore no está disponible."
+
             );
 
         }
 
         this.db = db;
+
     }
 
 
@@ -58,15 +72,22 @@ export default class Database {
         if (!nombre) {
 
             throw new Error(
+
                 "Debe indicar el nombre de la colección."
+
             );
 
         }
 
+
         return collection(
+
             this.db,
+
             nombre
+
         );
+
     }
 
 
@@ -74,29 +95,47 @@ export default class Database {
         DOCUMENTO
     ========================================================*/
 
-    document(nombre, id) {
+    document(
+        nombre,
+        id
+    ) {
 
         if (!nombre) {
 
             throw new Error(
+
                 "Debe indicar el nombre de la colección."
+
             );
 
         }
 
-        if (!id) {
+
+        if (
+            id === undefined ||
+            id === null ||
+            id === ""
+        ) {
 
             throw new Error(
+
                 "Debe indicar el ID del documento."
+
             );
 
         }
 
+
         return doc(
+
             this.db,
+
             nombre,
+
             String(id)
+
         );
+
     }
 
 
@@ -104,17 +143,24 @@ export default class Database {
         CREAR CON ID
     ========================================================*/
 
-    async create(collectionName, id, data) {
+    async create(
+        collectionName,
+        id,
+        data
+    ) {
+
+        if (!data) {
+
+            throw new Error(
+
+                "No se proporcionaron datos para guardar."
+
+            );
+
+        }
+
 
         try {
-
-            if (!id) {
-
-                throw new Error(
-                    "No se puede crear un documento sin ID."
-                );
-
-            }
 
             await setDoc(
 
@@ -127,18 +173,25 @@ export default class Database {
 
             );
 
+
             return true;
 
         }
+
         catch (error) {
 
             console.error(
+
                 "Database.create():",
+
                 error
+
             );
 
             throw error;
+
         }
+
     }
 
 
@@ -146,32 +199,43 @@ export default class Database {
         CREAR CON ID AUTOMÁTICO
     ========================================================*/
 
-    async add(collectionName, data) {
+    async add(
+        collectionName,
+        data
+    ) {
 
         try {
 
-            const referencia = await addDoc(
+            const referencia =
+                await addDoc(
 
-                this.collection(
-                    collectionName
-                ),
+                    this.collection(
+                        collectionName
+                    ),
 
-                data
+                    data
 
-            );
+                );
+
 
             return referencia.id;
 
         }
+
         catch (error) {
 
             console.error(
+
                 "Database.add():",
+
                 error
+
             );
 
             throw error;
+
         }
+
     }
 
 
@@ -179,42 +243,63 @@ export default class Database {
         LEER DOCUMENTO
     ========================================================*/
 
-    async read(collectionName, id) {
+    async read(
+        collectionName,
+        id
+    ) {
 
         try {
 
-            const referencia = this.document(
-                collectionName,
-                id
-            );
+            const referencia =
+                this.document(
 
-            const documento = await getDoc(
-                referencia
-            );
+                    collectionName,
 
-            if (!documento.exists()) {
+                    id
+
+                );
+
+
+            const documento =
+                await getDoc(
+                    referencia
+                );
+
+
+            if (
+                !documento.exists()
+            ) {
 
                 return null;
+
             }
+
 
             return {
 
-                id: documento.id,
+                id:
+                    documento.id,
 
                 ...documento.data()
 
             };
 
         }
+
         catch (error) {
 
             console.error(
+
                 "Database.read():",
+
                 error
+
             );
 
             throw error;
+
         }
+
     }
 
 
@@ -235,38 +320,48 @@ export default class Database {
                     collectionName
                 );
 
+
             /*
-             * Si se solicita ordenamiento,
-             * Firestore realizará la consulta ordenada.
+             * Si existe campo de orden,
+             * utilizar orderBy de Firestore.
              */
+
             if (orden) {
 
-                referencia = query(
+                referencia =
+                    query(
 
-                    referencia,
+                        referencia,
 
-                    orderBy(
-                        orden,
-                        direccion
-                    )
+                        orderBy(
 
-                );
+                            orden,
+
+                            direccion
+
+                        )
+
+                    );
 
             }
+
 
             const snapshot =
                 await getDocs(
                     referencia
                 );
 
+
             const lista = [];
+
 
             snapshot.forEach(
                 documento => {
 
                     lista.push({
 
-                        id: documento.id,
+                        id:
+                            documento.id,
 
                         ...documento.data()
 
@@ -275,18 +370,25 @@ export default class Database {
                 }
             );
 
+
             return lista;
 
         }
+
         catch (error) {
 
             console.error(
+
                 "Database.readAll():",
+
                 error
+
             );
 
             throw error;
+
         }
+
     }
 
 
@@ -305,26 +407,36 @@ export default class Database {
             await updateDoc(
 
                 this.document(
+
                     collectionName,
+
                     id
+
                 ),
 
                 data
 
             );
 
+
             return true;
 
         }
+
         catch (error) {
 
             console.error(
+
                 "Database.update():",
+
                 error
+
             );
 
             throw error;
+
         }
+
     }
 
 
@@ -342,24 +454,34 @@ export default class Database {
             await deleteDoc(
 
                 this.document(
+
                     collectionName,
+
                     id
+
                 )
 
             );
 
+
             return true;
 
         }
+
         catch (error) {
 
             console.error(
+
                 "Database.delete():",
+
                 error
+
             );
 
             throw error;
+
         }
+
     }
 
 
@@ -378,24 +500,34 @@ export default class Database {
                 await getDoc(
 
                     this.document(
+
                         collectionName,
+
                         id
+
                     )
 
                 );
 
+
             return documento.exists();
 
         }
+
         catch (error) {
 
             console.error(
+
                 "Database.exists():",
+
                 error
+
             );
 
             throw error;
+
         }
+
     }
 
 
@@ -412,7 +544,9 @@ export default class Database {
                 collectionName
             );
 
+
         return documentos.length;
+
     }
 
 }

@@ -1,8 +1,21 @@
+
 /**********************************************************************
  * SISTEMA HEURÍSTICO EVOLUTIVO
  * Archivo: js/Services/SemanaService.js
  *
  * Servicio encargado de administrar las semanas de sorteos.
+ *
+ * RESPONSABILIDADES:
+ * - Crear semanas
+ * - Consultar semanas
+ * - Actualizar semanas
+ * - Eliminar semanas
+ * - Buscar números
+ * - Obtener primera/última semana
+ * - Importar/exportar historial
+ *
+ * Este servicio NO calcula estadísticas.
+ * Esa responsabilidad corresponde a los Motores.
  **********************************************************************/
 
 import Database from "../database/Database.js";
@@ -12,17 +25,24 @@ import { CONFIG } from "../config.js";
 
 export default class SemanaService {
 
+
+    /*==============================================================
+        CONSTRUCTOR
+    ==============================================================*/
+
     constructor() {
 
-        this.database = new Database();
+        this.database =
+            new Database();
 
         this.collection =
             CONFIG.COLLECTIONS.SEMANAS;
+
     }
 
 
     /*==============================================================
-        GENERAR ID
+        GENERAR ID DE SEMANA
     ==============================================================*/
 
     generarId(numeroSemana) {
@@ -38,6 +58,7 @@ export default class SemanaService {
                 )
 
         );
+
     }
 
 
@@ -59,6 +80,7 @@ export default class SemanaService {
             id
 
         );
+
     }
 
 
@@ -83,12 +105,16 @@ export default class SemanaService {
 
 
         /*
-         * Validamos ANTES de enviar información
-         * a Firebase.
+         * Validar antes de acceder
+         * a Firestore.
          */
 
         nuevaSemana.validar();
 
+
+        /*
+         * Comprobar duplicado.
+         */
 
         const existe =
             await this.existe(
@@ -103,8 +129,13 @@ export default class SemanaService {
                 `La semana ${numeroSemana} ya existe.`
 
             );
+
         }
 
+
+        /*
+         * Guardar.
+         */
 
         await this.database.create(
 
@@ -118,11 +149,12 @@ export default class SemanaService {
 
 
         return nuevaSemana;
+
     }
 
 
     /*==============================================================
-        OBTENER SEMANA
+        OBTENER UNA SEMANA
     ==============================================================*/
 
     async obtener(numeroSemana) {
@@ -132,6 +164,7 @@ export default class SemanaService {
                 numeroSemana
             );
 
+
         return await this.database.read(
 
             this.collection,
@@ -139,6 +172,7 @@ export default class SemanaService {
             id
 
         );
+
     }
 
 
@@ -150,15 +184,38 @@ export default class SemanaService {
         direccion = "asc"
     ) {
 
+        /*
+         * Validar dirección.
+         */
+
+        const direccionNormalizada =
+            String(direccion).toLowerCase();
+
+
+        if (
+            direccionNormalizada !== "asc" &&
+            direccionNormalizada !== "desc"
+        ) {
+
+            throw new Error(
+
+                "La dirección debe ser 'asc' o 'desc'."
+
+            );
+
+        }
+
+
         return await this.database.readAll(
 
             this.collection,
 
             "semana",
 
-            direccion
+            direccionNormalizada
 
         );
+
     }
 
 
@@ -177,6 +234,10 @@ export default class SemanaService {
             );
 
 
+        /*
+         * Comprobar existencia.
+         */
+
         const existe =
             await this.database.exists(
 
@@ -194,8 +255,13 @@ export default class SemanaService {
                 `La semana ${numeroSemana} no existe.`
 
             );
+
         }
 
+
+        /*
+         * Preparar actualización.
+         */
 
         const datosActualizados = {
 
@@ -219,11 +285,12 @@ export default class SemanaService {
 
 
         return true;
+
     }
 
 
     /*==============================================================
-        ELIMINAR
+        ELIMINAR SEMANA
     ==============================================================*/
 
     async eliminar(
@@ -253,6 +320,7 @@ export default class SemanaService {
                 `La semana ${numeroSemana} no existe.`
 
             );
+
         }
 
 
@@ -266,6 +334,7 @@ export default class SemanaService {
 
 
         return true;
+
     }
 
 
@@ -280,6 +349,7 @@ export default class SemanaService {
             this.collection
 
         );
+
     }
 
 
@@ -292,22 +362,32 @@ export default class SemanaService {
         const semanas =
             await this.obtenerTodas();
 
+
         return semanas.reduce(
 
-            (total, semana) =>
+            (total, semana) => {
 
-                total +
-                (
+                if (
                     Array.isArray(
                         semana.numeros
                     )
-                        ? semana.numeros.length
-                        : 0
-                ),
+                ) {
+
+                    return (
+                        total +
+                        semana.numeros.length
+                    );
+
+                }
+
+                return total;
+
+            },
 
             0
 
         );
+
     }
 
 
@@ -329,10 +409,12 @@ export default class SemanaService {
         ) {
 
             return null;
+
         }
 
 
         return semanas[0];
+
     }
 
 
@@ -354,10 +436,12 @@ export default class SemanaService {
         ) {
 
             return null;
+
         }
 
 
         return semanas[0];
+
     }
 
 
@@ -368,6 +452,23 @@ export default class SemanaService {
     async buscarNumero(
         numero
     ) {
+
+        const numeroBuscado =
+            Number(numero);
+
+
+        if (
+            !Number.isInteger(
+                numeroBuscado
+            )
+        ) {
+
+            throw new Error(
+                "El número buscado no es válido."
+            );
+
+        }
+
 
         const semanas =
             await this.obtenerTodas();
@@ -382,15 +483,16 @@ export default class SemanaService {
                 ) &&
 
                 semana.numeros.includes(
-                    Number(numero)
+                    numeroBuscado
                 )
 
         );
+
     }
 
 
     /*==============================================================
-        APARECE NÚMERO
+        COMPROBAR APARICIÓN
     ==============================================================*/
 
     async apareceNumero(
@@ -404,21 +506,25 @@ export default class SemanaService {
 
 
         return resultado.length > 0;
+
     }
 
 
     /*==============================================================
-        EXPORTAR JSON
+        EXPORTAR HISTORIAL JSON
     ==============================================================*/
 
     async exportarJSON() {
 
-        return await this.obtenerTodas();
+        return await this.obtenerTodas(
+            "asc"
+        );
+
     }
 
 
     /*==============================================================
-        IMPORTAR JSON
+        IMPORTAR HISTORIAL JSON
     ==============================================================*/
 
     async importarJSON(
@@ -432,12 +538,16 @@ export default class SemanaService {
         ) {
 
             throw new Error(
+
                 "El archivo JSON debe contener una lista de semanas."
+
             );
+
         }
 
 
         let importadas = 0;
+
         let omitidas = 0;
 
 
@@ -445,6 +555,10 @@ export default class SemanaService {
             const datos
             of listaSemanas
         ) {
+
+            /*
+             * Validación básica.
+             */
 
             if (
                 !datos ||
@@ -454,8 +568,14 @@ export default class SemanaService {
                 omitidas++;
 
                 continue;
+
             }
 
+
+            /*
+             * No sobrescribir
+             * semanas existentes.
+             */
 
             const existe =
                 await this.existe(
@@ -468,8 +588,13 @@ export default class SemanaService {
                 omitidas++;
 
                 continue;
+
             }
 
+
+            /*
+             * Crear modelo.
+             */
 
             const semana =
                 new Semana(
@@ -483,7 +608,41 @@ export default class SemanaService {
                 );
 
 
+            /*
+             * Validar antes
+             * de guardar.
+             */
+
             semana.validar();
+
+
+            /*
+             * Mantener datos históricos
+             * originales cuando existan.
+             */
+
+            if (datos.id) {
+
+                semana.id =
+                    datos.id;
+
+            }
+
+
+            if (datos.creado) {
+
+                semana.creado =
+                    datos.creado;
+
+            }
+
+
+            if (datos.modificado) {
+
+                semana.modificado =
+                    datos.modificado;
+
+            }
 
 
             await this.database.create(
@@ -498,6 +657,7 @@ export default class SemanaService {
 
 
             importadas++;
+
         }
 
 
@@ -508,6 +668,7 @@ export default class SemanaService {
             omitidas
 
         };
+
     }
 
 }
