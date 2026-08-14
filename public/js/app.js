@@ -299,10 +299,10 @@ class App {
              * innecesariamente en otras páginas.
              */
 
-            const modulo =
-                await import(
-                    "./services/DashboardService.js"
-                );
+           const modulo =
+    await import(
+        "./services/DashboardService.js"
+    );
 
 
             const DashboardService =
