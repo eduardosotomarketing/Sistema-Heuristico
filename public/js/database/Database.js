@@ -16,7 +16,7 @@
  * - Contar documentos
  *
  * Esta clase NO contiene lógica de sorteos.
- * La lógica pertenece a Services y Motores.
+ * La lógica pertenece a services y Motores.
  ***********************************************************************/
 
 import {
