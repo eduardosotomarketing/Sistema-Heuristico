@@ -1,12 +1,13 @@
 /**********************************************************************
  * SISTEMA HEURÍSTICO EVOLUTIVO
- * Archivo: DashboardService.js
+ * Archivo: js/services/DashboardService.js
  *
- * Servicio encargado de generar toda la información que utilizará
- * el Dashboard principal.
+ * Servicio encargado de generar la información
+ * utilizada por el Dashboard principal.
  **********************************************************************/
 
 import SemanaService from "./SemanaService.js";
+
 
 export default class DashboardService {
 
@@ -16,29 +17,106 @@ export default class DashboardService {
 
     }
 
+
     /*==============================================================
-        RESUMEN GENERAL
+        OBTENER RESUMEN GENERAL
     ==============================================================*/
 
     async obtenerResumen() {
 
-        const semanas = await this.semanaService.obtenerTodas();
+        const semanas =
+            await this.semanaService.obtenerTodas("asc");
 
-        const totalSemanas = semanas.length;
 
-        const totalNumeros = totalSemanas * 10;
+        let totalSemanas =
+            semanas.length;
+
+
+        let totalNumeros = 0;
+
+        let totalPares = 0;
+
+        let totalImpares = 0;
+
+        let sumaTotal = 0;
+
+
+        /*
+         * Recorrer todas las semanas
+         */
+
+        semanas.forEach(semana => {
+
+            if (!Array.isArray(semana.numeros)) {
+
+                return;
+
+            }
+
+
+            totalNumeros +=
+                semana.numeros.length;
+
+
+            semana.numeros.forEach(numero => {
+
+                sumaTotal += Number(numero);
+
+
+                if (Number(numero) % 2 === 0) {
+
+                    totalPares++;
+
+                }
+                else {
+
+                    totalImpares++;
+
+                }
+
+            });
+
+        });
+
+
+        /*========================================================
+            ÚLTIMA SEMANA
+        ========================================================*/
 
         let ultimaSemana = null;
 
         let ultimaFecha = "-";
 
+
         if (totalSemanas > 0) {
 
-            ultimaSemana = semanas[totalSemanas - 1].semana;
+            const ultima =
+                semanas[totalSemanas - 1];
 
-            ultimaFecha = semanas[totalSemanas - 1].fecha;
+
+            ultimaSemana =
+                ultima.semana ?? null;
+
+
+            ultimaFecha =
+                ultima.fecha ?? "-";
 
         }
+
+
+        /*========================================================
+            PROMEDIO
+        ========================================================*/
+
+        const promedioNumeros =
+            totalNumeros > 0
+                ? sumaTotal / totalNumeros
+                : 0;
+
+
+        /*========================================================
+            RESULTADO
+        ========================================================*/
 
         return {
 
@@ -54,25 +132,28 @@ export default class DashboardService {
 
             topFrecuencia: 0,
 
-            totalPares: 0,
+            totalPares,
 
-            totalImpares: 0,
+            totalImpares,
 
-            promedioNumeros: 0,
+            promedioNumeros,
 
-            sumaPromedio: 0
+            sumaPromedio: promedioNumeros
 
         };
 
     }
 
+
     /*==============================================================
-        CARGAR TARJETAS DEL DASHBOARD
+        CARGAR DASHBOARD
     ==============================================================*/
 
     async cargarDashboard() {
 
-        const resumen = await this.obtenerResumen();
+        const resumen =
+            await this.obtenerResumen();
+
 
         this.actualizarTexto(
 
@@ -82,6 +163,7 @@ export default class DashboardService {
 
         );
 
+
         this.actualizarTexto(
 
             "totalNumeros",
@@ -89,6 +171,7 @@ export default class DashboardService {
             resumen.totalNumeros
 
         );
+
 
         this.actualizarTexto(
 
@@ -98,6 +181,7 @@ export default class DashboardService {
 
         );
 
+
         this.actualizarTexto(
 
             "topNumero",
@@ -106,7 +190,54 @@ export default class DashboardService {
 
         );
 
+
+        /*
+         * Elementos opcionales.
+         *
+         * Si todavía no existen en index.html,
+         * simplemente no ocurre nada.
+         */
+
+        this.actualizarTexto(
+
+            "ultimaFecha",
+
+            resumen.ultimaFecha
+
+        );
+
+
+        this.actualizarTexto(
+
+            "totalPares",
+
+            resumen.totalPares
+
+        );
+
+
+        this.actualizarTexto(
+
+            "totalImpares",
+
+            resumen.totalImpares
+
+        );
+
+
+        this.actualizarTexto(
+
+            "promedioNumeros",
+
+            resumen.promedioNumeros.toFixed(2)
+
+        );
+
+
+        return resumen;
+
     }
+
 
     /*==============================================================
         ACTUALIZAR TEXTO HTML
@@ -114,13 +245,21 @@ export default class DashboardService {
 
     actualizarTexto(id, valor) {
 
-        const elemento = document.getElementById(id);
+        const elemento =
+            document.getElementById(id);
 
-        if (!elemento) return;
+
+        if (!elemento) {
+
+            return;
+
+        }
+
 
         elemento.textContent = valor;
 
     }
+
 
     /*==============================================================
         VERIFICAR SI EXISTEN DATOS
@@ -128,11 +267,14 @@ export default class DashboardService {
 
     async tieneDatos() {
 
-        const semanas = await this.semanaService.obtenerTodas();
+        const semanas =
+            await this.semanaService.obtenerTodas();
+
 
         return semanas.length > 0;
 
     }
+
 
     /*==============================================================
         OBTENER ÚLTIMA SEMANA
