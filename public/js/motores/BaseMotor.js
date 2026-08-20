@@ -1,380 +1,96 @@
 /**********************************************************************
  * SISTEMA HEURÍSTICO EVOLUTIVO
+ * Archivo: js/motores/BaseMotor.js
  *
- * Archivo:
- * js/motores/BaseMotor.js
+ * Clase base de todos los motores heurísticos.
  *
- * Propósito:
- * Clase base para todos los motores heurísticos.
+ * RESPONSABILIDADES:
  *
- * Todos los motores deberán:
+ * - Recibir historial y estadísticas
+ * - Mantener configuración común
+ * - Normalizar valores
+ * - Limitar puntuaciones
+ * - Crear resultados uniformes
+ * - Proporcionar información del motor
  *
- *   1. Recibir un número.
- *   2. Recibir un contexto.
- *   3. Calcular un score entre 0 y 100.
- *   4. Calcular una confianza entre 0 y 100.
- *   5. Devolver un resultado explicable.
+ * IMPORTANTE:
  *
+ * BaseMotor NO consulta Firebase.
+ *
+ * Los datos deben ser proporcionados por MotorManager
+ * o por la capa superior del sistema.
  **********************************************************************/
+
+import { CONFIG } from "../config.js";
+
 
 export default class BaseMotor {
 
-    constructor(nombre, version = "1.0.0") {
+
+    /*==============================================================
+        CONSTRUCTOR
+    ==============================================================*/
+
+    constructor(nombre = "Motor") {
 
         this.nombre = nombre;
 
-        this.version = version;
+        this.version = CONFIG.VERSION;
 
-        this.activo = true;
+        this.historial = [];
+
+        this.estadisticas = [];
+
+        this.configuracion = {};
+
+        this.inicializado = false;
+
+        this.ultimaEjecucion = null;
 
     }
 
 
     /*==============================================================
-        MÉTODO PRINCIPAL
+        INICIALIZAR
     ==============================================================*/
 
-    calcular(numero, contexto) {
+    inicializar(datos = {}) {
+
+        this.historial =
+            Array.isArray(datos.historial)
+                ? datos.historial
+                : [];
+
+
+        this.estadisticas =
+            Array.isArray(datos.estadisticas)
+                ? datos.estadisticas
+                : [];
+
+
+        this.configuracion =
+            datos.configuracion || {};
+
+
+        this.inicializado = true;
+
+        return this;
+
+    }
+
+
+    /*==============================================================
+        EJECUTAR
+    ==============================================================*/
+
+    ejecutar() {
 
         throw new Error(
 
-            `El motor "${this.nombre}" debe implementar el método calcular().`
+            `${this.nombre}: ` +
+            "el método ejecutar() debe ser implementado."
 
         );
-
-    }
-
-
-    /*==============================================================
-        VALIDAR NÚMERO
-    ==============================================================*/
-
-    validarNumero(numero) {
-
-        if (numero === null || numero === undefined) {
-
-            throw new Error(
-
-                "El número es obligatorio."
-
-            );
-
-        }
-
-        const valor = Number(numero);
-
-        if (!Number.isInteger(valor)) {
-
-            throw new Error(
-
-                "El número debe ser un entero."
-
-            );
-
-        }
-
-        if (valor < 0 || valor > 99) {
-
-            throw new Error(
-
-                "El número debe estar entre 00 y 99."
-
-            );
-
-        }
-
-        return valor;
-
-    }
-
-
-    /*==============================================================
-        VALIDAR CONTEXTO
-    ==============================================================*/
-
-    validarContexto(contexto) {
-
-        if (!contexto || typeof contexto !== "object") {
-
-            throw new Error(
-
-                `El motor "${this.nombre}" recibió un contexto inválido.`
-
-            );
-
-        }
-
-        return true;
-
-    }
-
-
-    /*==============================================================
-        NORMALIZAR SCORE
-    ==============================================================*/
-
-    normalizarScore(valor) {
-
-        const numero = Number(valor);
-
-        if (!Number.isFinite(numero)) {
-
-            return 0;
-
-        }
-
-        return Math.max(
-
-            0,
-
-            Math.min(
-
-                100,
-
-                numero
-
-            )
-
-        );
-
-    }
-
-
-    /*==============================================================
-        NORMALIZAR CONFIANZA
-    ==============================================================*/
-
-    normalizarConfianza(valor) {
-
-        const numero = Number(valor);
-
-        if (!Number.isFinite(numero)) {
-
-            return 0;
-
-        }
-
-        return Math.max(
-
-            0,
-
-            Math.min(
-
-                100,
-
-                numero
-
-            )
-
-        );
-
-    }
-
-
-    /*==============================================================
-        DETERMINAR NIVEL DE EVIDENCIA
-    ==============================================================*/
-
-    determinarEvidencia(confianza) {
-
-        const valor = this.normalizarConfianza(confianza);
-
-        if (valor >= 80) {
-
-            return "ALTA";
-
-        }
-
-        if (valor >= 50) {
-
-            return "MEDIA";
-
-        }
-
-        return "BAJA";
-
-    }
-
-
-    /*==============================================================
-        REDONDEAR
-    ==============================================================*/
-
-    redondear(valor, decimales = 2) {
-
-        const numero = Number(valor);
-
-        if (!Number.isFinite(numero)) {
-
-            return 0;
-
-        }
-
-        const factor = Math.pow(
-
-            10,
-
-            decimales
-
-        );
-
-        return Math.round(
-
-            numero * factor
-
-        ) / factor;
-
-    }
-
-
-    /*==============================================================
-        FORMATEAR NÚMERO
-    ==============================================================*/
-
-    formatearNumero(numero) {
-
-        return String(
-
-            this.validarNumero(numero)
-
-        ).padStart(
-
-            2,
-
-            "0"
-
-        );
-
-    }
-
-
-    /*==============================================================
-        CREAR RESULTADO ESTÁNDAR
-    ==============================================================*/
-
-    crearResultado({
-
-        numero,
-
-        score = 0,
-
-        confianza = 0,
-
-        peso = 0,
-
-        detalle = {},
-
-        indicadores = {}
-
-    }) {
-
-        const numeroValidado =
-
-            this.validarNumero(numero);
-
-
-        const scoreNormalizado =
-
-            this.normalizarScore(score);
-
-
-        const confianzaNormalizada =
-
-            this.normalizarConfianza(confianza);
-
-
-        return {
-
-            numero: numeroValidado,
-
-            numeroTexto:
-
-                this.formatearNumero(
-
-                    numeroValidado
-
-                ),
-
-            motor: this.nombre,
-
-            version: this.version,
-
-            activo: this.activo,
-
-            score:
-
-                this.redondear(
-
-                    scoreNormalizado
-
-                ),
-
-            confianza:
-
-                this.redondear(
-
-                    confianzaNormalizada
-
-                ),
-
-            evidencia:
-
-                this.determinarEvidencia(
-
-                    confianzaNormalizada
-
-                ),
-
-            peso:
-
-                this.redondear(
-
-                    Number(peso) || 0
-
-                ),
-
-            detalle,
-
-            indicadores,
-
-            fechaCalculo:
-
-                new Date().toISOString()
-
-        };
-
-    }
-
-
-    /*==============================================================
-        ACTIVAR MOTOR
-    ==============================================================*/
-
-    activar() {
-
-        this.activo = true;
-
-    }
-
-
-    /*==============================================================
-        DESACTIVAR MOTOR
-    ==============================================================*/
-
-    desactivar() {
-
-        this.activo = false;
-
-    }
-
-
-    /*==============================================================
-        ESTADO
-    ==============================================================*/
-
-    estaActivo() {
-
-        return this.activo;
 
     }
 
@@ -391,9 +107,601 @@ export default class BaseMotor {
 
             version: this.version,
 
-            activo: this.activo
+            inicializado: this.inicializado,
+
+            historial:
+                this.historial.length,
+
+            estadisticas:
+                this.estadisticas.length,
+
+            ultimaEjecucion:
+                this.ultimaEjecucion
 
         };
+
+    }
+
+
+    /*==============================================================
+        REGISTRAR EJECUCIÓN
+    ==============================================================*/
+
+    registrarEjecucion() {
+
+        this.ultimaEjecucion =
+            new Date().toISOString();
+
+    }
+
+
+    /*==============================================================
+        NORMALIZAR NÚMERO
+    ==============================================================*/
+
+    normalizarNumero(numero) {
+
+        const valor =
+            Number(numero);
+
+
+        if (!Number.isFinite(valor)) {
+
+            return null;
+
+        }
+
+
+        return Math.trunc(valor);
+
+    }
+
+
+    /*==============================================================
+        TEXTO DEL NÚMERO
+    ==============================================================*/
+
+    textoNumero(numero) {
+
+        const valor =
+            this.normalizarNumero(numero);
+
+
+        if (valor === null) {
+
+            return null;
+
+        }
+
+
+        return String(valor).padStart(2, "0");
+
+    }
+
+
+    /*==============================================================
+        LIMITAR VALOR
+    ==============================================================*/
+
+    limitar(
+        valor,
+        minimo = 0,
+        maximo = 100
+    ) {
+
+        const numero =
+            Number(valor);
+
+
+        if (!Number.isFinite(numero)) {
+
+            return minimo;
+
+        }
+
+
+        return Math.min(
+
+            maximo,
+
+            Math.max(
+                minimo,
+                numero
+            )
+
+        );
+
+    }
+
+
+    /*==============================================================
+        NORMALIZAR PORCENTAJE
+    ==============================================================*/
+
+    porcentaje(valor) {
+
+        return this.limitar(
+
+            Number(valor),
+
+            0,
+
+            100
+
+        );
+
+    }
+
+
+    /*==============================================================
+        REDONDEAR
+    ==============================================================*/
+
+    redondear(
+        valor,
+        decimales = 2
+    ) {
+
+        const numero =
+            Number(valor);
+
+
+        if (!Number.isFinite(numero)) {
+
+            return 0;
+
+        }
+
+
+        const factor =
+            Math.pow(
+                10,
+                decimales
+            );
+
+
+        return Math.round(
+
+            numero * factor
+
+        ) / factor;
+
+    }
+
+
+    /*==============================================================
+        PROMEDIO
+    ==============================================================*/
+
+    promedio(lista = []) {
+
+    if (
+        !Array.isArray(lista) ||
+        lista.length === 0
+    ) {
+
+        return 0;
+
+    }
+
+
+    const valores =
+        lista
+
+            .map(Number)
+
+            .filter(
+                valor =>
+                    Number.isFinite(valor)
+            );
+
+
+    if (valores.length === 0) {
+
+        return 0;
+
+    }
+
+
+    const suma =
+        valores.reduce(
+
+            (total, valor) =>
+                total + valor,
+
+            0
+
+        );
+
+
+    return suma / valores.length;
+
+}
+
+/*========================================================
+    MAYOR
+========================================================*/
+
+mayor(lista = []) {
+
+    if (
+        !Array.isArray(lista) ||
+        lista.length === 0
+    ) {
+
+        return null;
+
+    }
+
+    const valores =
+        lista
+
+            .map(Number)
+
+            .filter(
+                valor =>
+                    Number.isFinite(valor)
+            );
+
+
+    if (valores.length === 0) {
+
+        return null;
+
+    }
+
+
+    return Math.max(...valores);
+
+}
+
+
+/*========================================================
+    MENOR
+========================================================*/
+
+menor(lista = []) {
+
+    if (
+        !Array.isArray(lista) ||
+        lista.length === 0
+    ) {
+
+        return null;
+
+    }
+
+
+    const valores =
+        lista
+
+            .map(Number)
+
+            .filter(
+                valor =>
+                    Number.isFinite(valor)
+            );
+
+
+    if (valores.length === 0) {
+
+        return null;
+
+    }
+
+
+    return Math.min(...valores);
+
+}
+
+
+    /*==============================================================
+        SUMA
+    ==============================================================*/
+
+    suma(lista = []) {
+
+        if (!Array.isArray(lista)) {
+
+            return 0;
+
+        }
+
+
+        return lista.reduce(
+
+            (total, valor) => {
+
+                const numero =
+                    Number(valor);
+
+
+                if (
+                    !Number.isFinite(numero)
+                ) {
+
+                    return total;
+
+                }
+
+
+                return total + numero;
+
+            },
+
+            0
+
+        );
+
+    }
+
+
+    /*==============================================================
+        CONTAR APARICIONES
+    ==============================================================*/
+
+    contarNumero(
+        numero,
+        semanas = this.historial
+    ) {
+
+        const objetivo =
+            this.normalizarNumero(
+                numero
+            );
+
+
+        if (objetivo === null) {
+
+            return 0;
+
+        }
+
+
+        if (!Array.isArray(semanas)) {
+
+            return 0;
+
+        }
+
+
+        let contador = 0;
+
+
+        semanas.forEach(semana => {
+
+            if (
+                !semana ||
+                !Array.isArray(
+                    semana.numeros
+                )
+            ) {
+
+                return;
+
+            }
+
+
+            if (
+                semana.numeros.includes(
+                    objetivo
+                )
+            ) {
+
+                contador++;
+
+            }
+
+        });
+
+
+        return contador;
+
+    }
+
+
+    /*==============================================================
+        OBTENER ESTADÍSTICA DE UN NÚMERO
+    ==============================================================*/
+
+    obtenerEstadistica(numero) {
+
+        const objetivo =
+            this.normalizarNumero(
+                numero
+            );
+
+
+        if (objetivo === null) {
+
+            return null;
+
+        }
+
+
+        return this.estadisticas.find(
+
+            item =>
+                Number(item.numero) === objetivo
+
+        ) || null;
+
+    }
+
+
+    /*==============================================================
+        CREAR RESULTADO BÁSICO
+    ==============================================================*/
+
+    crearResultado(
+        numero,
+        score = 0,
+        datos = {}
+    ) {
+
+        const valor =
+            this.normalizarNumero(
+                numero
+            );
+
+
+        return {
+
+            numero: valor,
+
+            texto:
+                this.textoNumero(
+                    valor
+                ),
+
+            score:
+                this.redondear(
+                    score
+                ),
+
+            motor:
+                this.nombre,
+
+            ...datos
+
+        };
+
+    }
+
+
+    /*==============================================================
+        ORDENAR RESULTADOS
+    ==============================================================*/
+
+    ordenarResultados(
+        resultados = [],
+        campo = "score"
+    ) {
+
+        if (
+            !Array.isArray(
+                resultados
+            )
+        ) {
+
+            return [];
+
+        }
+
+
+        return [...resultados].sort(
+
+            (a, b) =>
+
+                Number(b[campo] || 0) -
+                Number(a[campo] || 0)
+
+        );
+
+    }
+
+
+    /*==============================================================
+        OBTENER TOP
+    ==============================================================*/
+
+    obtenerTop(
+        resultados = [],
+        cantidad = 10,
+        campo = "score"
+    ) {
+
+        return this
+
+            .ordenarResultados(
+                resultados,
+                campo
+            )
+
+            .slice(
+                0,
+                cantidad
+            );
+
+    }
+
+
+    /*==============================================================
+        VALIDAR NÚMERO
+    ==============================================================*/
+
+    validarNumero(numero) {
+
+        const valor =
+            this.normalizarNumero(
+                numero
+            );
+
+
+        if (valor === null) {
+
+            return false;
+
+        }
+
+
+        return (
+
+            valor >= CONFIG.MIN_NUMERO &&
+
+            valor <= CONFIG.MAX_NUMERO
+
+        );
+
+    }
+
+
+    /*==============================================================
+        OBTENER NÚMEROS POSIBLES
+    ==============================================================*/
+
+    obtenerNumerosPosibles() {
+
+        const numeros = [];
+
+
+        for (
+
+            let numero =
+                CONFIG.MIN_NUMERO;
+
+            numero <=
+                CONFIG.MAX_NUMERO;
+
+            numero++
+
+        ) {
+
+            numeros.push(numero);
+
+        }
+
+
+        return numeros;
+
+    }
+
+
+    /*==============================================================
+        REINICIAR
+    ==============================================================*/
+
+    reiniciar() {
+
+        this.historial = [];
+
+        this.estadisticas = [];
+
+        this.inicializado = false;
+
+        this.ultimaEjecucion = null;
+
+        return this;
 
     }
 

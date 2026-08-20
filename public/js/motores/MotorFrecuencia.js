@@ -569,60 +569,92 @@ export default class MotorFrecuencia extends BaseMotor {
         OBTENER SEMANAS
     ==============================================================*/
 
-    obtenerSemanas(contexto) {
 
-        if (
+/*==============================================================
+    OBTENER SEMANAS
+==============================================================*/
 
-            Array.isArray(
+obtenerSemanas(contexto) {
 
-                contexto.semanas
-
-            )
-
-        ) {
-
-            return contexto.semanas;
-
-        }
-
-
-        if (
-
-            contexto.historial &&
-
-            Array.isArray(
-
-                contexto.historial.semanas
-
-            )
-
-        ) {
-
-            return contexto.historial.semanas;
-
-        }
-
-
-        if (
-
-            contexto.data &&
-
-            Array.isArray(
-
-                contexto.data.semanas
-
-            )
-
-        ) {
-
-            return contexto.data.semanas;
-
-        }
-
+    if (!contexto) {
 
         return [];
 
     }
+
+
+    /*----------------------------------------------------------
+        CASO 1
+        contexto.semanas
+    ----------------------------------------------------------*/
+
+    if (
+        Array.isArray(
+            contexto.semanas
+        )
+    ) {
+
+        return contexto.semanas;
+
+    }
+
+
+    /*----------------------------------------------------------
+        CASO 2
+        contexto.historial como ARRAY
+        Esta es actualmente nuestra estructura principal.
+    ----------------------------------------------------------*/
+
+    if (
+        Array.isArray(
+            contexto.historial
+        )
+    ) {
+
+        return contexto.historial;
+
+    }
+
+
+    /*----------------------------------------------------------
+        CASO 3
+        contexto.historial.semanas
+    ----------------------------------------------------------*/
+
+    if (
+        contexto.historial &&
+        Array.isArray(
+            contexto.historial.semanas
+        )
+    ) {
+
+        return contexto.historial.semanas;
+
+    }
+
+
+    /*----------------------------------------------------------
+        CASO 4
+        contexto.data.semanas
+    ----------------------------------------------------------*/
+
+    if (
+        contexto.data &&
+        Array.isArray(
+            contexto.data.semanas
+        )
+    ) {
+
+        return contexto.data.semanas;
+
+    }
+
+
+    return [];
+
+}
+
+
 
 
     /*==============================================================
