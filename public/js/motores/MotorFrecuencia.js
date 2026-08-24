@@ -22,15 +22,44 @@ export default class MotorFrecuencia extends BaseMotor {
     /*==============================================================
         MÉTODO PRINCIPAL
     ==============================================================*/
+calcular(numero, contexto) {
 
-    calcular(numero, contexto) {
+    /*
+     * Primero normalizamos el número.
+     */
 
-        const numeroValidado =
+    const numeroValidado =
+        this.normalizarNumero(numero);
 
-            this.validarNumero(numero);
+
+    /*
+     * Después comprobamos que pertenezca
+     * al rango permitido 00-99.
+     */
+
+    if (
+        !this.validarNumero(
+            numeroValidado
+        )
+    ) {
+
+        throw new Error(
+
+            `Número inválido: ${numero}. ` +
+            "Debe estar entre 00 y 99."
+
+        );
+
+    }
 
 
-        this.validarContexto(contexto);
+    /*
+     * Validar contexto.
+     */
+
+    this.validarContexto(
+        contexto
+    );
 
 
         const semanas =

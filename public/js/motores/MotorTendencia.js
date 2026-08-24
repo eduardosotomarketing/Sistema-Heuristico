@@ -5,24 +5,27 @@
  * js/motores/MotorTendencia.js
  *
  * Propósito:
- * Analizar el comportamiento reciente de cada número (00-99).
+ * Analizar la evolución temporal reciente de cada número (00-99).
  *
- * Ventanas utilizadas:
+ * Analiza:
+ * - Últimas 3 semanas
+ * - Últimas 5 semanas
+ * - Últimas 10 semanas
+ * - Últimas 20 semanas
+ * - Últimas 50 semanas
  *
- *   - Últimas 3 semanas
- *   - Últimas 5 semanas
- *   - Últimas 10 semanas
- *   - Últimas 20 semanas
- *   - Últimas 50 semanas
+ * Diferencia conceptual:
  *
- * Cada ventana posee un peso configurable.
+ * MotorFrecuencia:
+ *     mide cuánto aparece un número.
  *
- * Todos los scores se normalizan entre 0 y 100.
+ * MotorTendencia:
+ *     mide cómo está evolucionando su frecuencia reciente
+ *     respecto de períodos más amplios.
  *
  **********************************************************************/
 
 import BaseMotor from "./BaseMotor.js";
-
 import MotorResult from "./MotorResult.js";
 
 
@@ -32,11 +35,8 @@ export default class MotorTendencia extends BaseMotor {
     constructor() {
 
         super(
-
             "Tendencia",
-
             "1.0.0"
-
         );
 
     }
@@ -46,105 +46,70 @@ export default class MotorTendencia extends BaseMotor {
         MÉTODO PRINCIPAL
     ==============================================================*/
 
-    calcular(numero, contexto) {
+   calcular(numero, contexto) {
 
-        const numeroValidado =
+    /*
+     * Normalizar el número recibido.
+     */
 
-            this.validarNumero(numero);
+    const numeroValidado =
+        this.normalizarNumero(numero);
 
 
-        this.validarContexto(contexto);
+    /*
+     * Validar que pertenezca
+     * al rango permitido 00-99.
+     */
+
+    if (
+        !this.validarNumero(
+            numeroValidado
+        )
+    ) {
+
+        throw new Error(
+
+            `Número inválido: ${numero}. ` +
+            "Debe estar entre 00 y 99."
+
+        );
+
+    }
+
+
+    /*
+     * Validar contexto.
+     */
+
+    this.validarContexto(
+        contexto
+    );
 
 
         const semanas =
-
             this.obtenerSemanas(contexto);
 
 
-        /*
-         * Si no existe historial suficiente,
-         * devolvemos un resultado vacío.
-         */
-
         if (semanas.length === 0) {
 
-            return new MotorResult({
-
-                numero: numeroValidado,
-
-                motor: this.nombre,
-
-                version: this.version,
-
-                score: 0,
-
-                confianza: 0,
-
-                peso:
-
-                    this.obtenerPeso(contexto),
-
-                detalle: {
-
-                    mensaje:
-
-                        "No existen semanas históricas."
-
-                },
-
-                indicadores: {
-
-                    frecuencia3: 0,
-
-                    frecuencia5: 0,
-
-                    frecuencia10: 0,
-
-                    frecuencia20: 0,
-
-                    frecuencia50: 0
-
-                }
-
-            });
+            return this.resultadoSinDatos(
+                numeroValidado,
+                contexto,
+                "No existen semanas históricas."
+            );
 
         }
 
 
-        /*
-         * Las semanas deben analizarse de la más reciente
-         * hacia atrás.
-         *
-         * Si el historial está almacenado en orden
-         * cronológico ascendente, invertimos una copia.
-         */
-
         const semanasOrdenadas =
+            this.ordenarSemanas(semanas);
 
-            this.ordenarSemanas(
-
-                semanas
-
-            );
-
-
-        /*
-         * Obtenemos las ventanas configuradas.
-         */
 
         const ventanas =
-
             this.obtenerConfiguracionVentanas(
-
                 contexto
-
             );
 
-
-        /*
-         * Calculamos la frecuencia de aparición
-         * para cada ventana.
-         */
 
         const resultadosVentanas = {};
 
@@ -152,9 +117,7 @@ export default class MotorTendencia extends BaseMotor {
         for (const ventana of ventanas) {
 
             resultadosVentanas[
-
                 ventana.semanas
-
             ] = this.calcularVentana(
 
                 numeroValidado,
@@ -168,46 +131,166 @@ export default class MotorTendencia extends BaseMotor {
         }
 
 
-        /*
-         * Calculamos el score ponderado.
-         */
+        /*==========================================================
+            FRECUENCIAS PORCENTUALES
+        ==========================================================*/
+
+        const porcentaje3 =
+            this.obtenerPorcentaje(
+                resultadosVentanas,
+                3
+            );
+
+
+        const porcentaje5 =
+            this.obtenerPorcentaje(
+                resultadosVentanas,
+                5
+            );
+
+
+        const porcentaje10 =
+            this.obtenerPorcentaje(
+                resultadosVentanas,
+                10
+            );
+
+
+        const porcentaje20 =
+            this.obtenerPorcentaje(
+                resultadosVentanas,
+                20
+            );
+
+
+        const porcentaje50 =
+            this.obtenerPorcentaje(
+                resultadosVentanas,
+                50
+            );
+
+
+        /*==========================================================
+            CORTO PLAZO
+        ==========================================================*/
+
+        const cortoPlazo =
+
+            (
+                porcentaje3 * 0.60
+            ) +
+
+            (
+                porcentaje5 * 0.40
+            );
+
+
+        /*==========================================================
+            MEDIANO PLAZO
+        ==========================================================*/
+
+        const medianoPlazo =
+
+            (
+                porcentaje10 * 0.60
+            ) +
+
+            (
+                porcentaje20 * 0.40
+            );
+
+
+        /*==========================================================
+            LARGO PLAZO
+        ==========================================================*/
+
+        const largoPlazo =
+            porcentaje50;
+
+
+        /*==========================================================
+            DIFERENCIAS
+        ==========================================================*/
+
+        const diferenciaCortoMediano =
+            cortoPlazo - medianoPlazo;
+
+
+        const diferenciaCortoLargo =
+            cortoPlazo - largoPlazo;
+
+
+        /*==========================================================
+            VALOR DE TENDENCIA
+        ==========================================================*/
+
+        const valorTendencia =
+
+            (
+                diferenciaCortoMediano * 0.70
+            ) +
+
+            (
+                diferenciaCortoLargo * 0.30
+            );
+
+
+        /*==========================================================
+            CLASIFICACIÓN
+        ==========================================================*/
+
+        const direccion =
+            this.clasificarTendencia(
+                valorTendencia
+            );
+
+
+        /*==========================================================
+            SCORE DE ACTIVIDAD RECIENTE
+        ==========================================================*/
+
+        const scoreActividad =
+            this.calcularScoreActividad(
+                porcentaje3,
+                porcentaje5,
+                porcentaje10
+            );
+
+
+        /*==========================================================
+            SCORE DE DIRECCIÓN
+        ==========================================================*/
+
+        const scoreDireccion =
+            this.calcularScoreDireccion(
+                valorTendencia
+            );
+
+
+        /*==========================================================
+            SCORE FINAL
+        ==========================================================*/
 
         const score =
 
-            this.calcularScorePonderado(
+            (
+                scoreActividad * 0.55
+            ) +
 
-                resultadosVentanas,
-
-                ventanas
-
+            (
+                scoreDireccion * 0.45
             );
 
-
-        /*
-         * Calculamos la confianza.
-         */
 
         const confianza =
-
             this.calcularConfianza(
-
                 semanasOrdenadas.length
-
             );
 
 
-        /*
-         * Peso global del Motor Tendencia.
-         */
-
         const peso =
-
             this.obtenerPeso(contexto);
 
-
-        /*
-         * Creamos el resultado estándar.
-         */
 
         return new MotorResult({
 
@@ -217,7 +300,10 @@ export default class MotorTendencia extends BaseMotor {
 
             version: this.version,
 
-            score,
+            score:
+                this.normalizarScore(
+                    score
+                ),
 
             confianza,
 
@@ -226,74 +312,156 @@ export default class MotorTendencia extends BaseMotor {
             detalle: {
 
                 ventanas:
-
                     resultadosVentanas,
 
                 configuracion:
-
                     ventanas,
 
                 semanasDisponibles:
+                    semanasOrdenadas.length,
 
-                    semanasOrdenadas.length
+                cortoPlazo:
+                    this.redondear(
+                        cortoPlazo,
+                        4
+                    ),
+
+                medianoPlazo:
+                    this.redondear(
+                        medianoPlazo,
+                        4
+                    ),
+
+                largoPlazo:
+                    this.redondear(
+                        largoPlazo,
+                        4
+                    ),
+
+                diferenciaCortoMediano:
+                    this.redondear(
+                        diferenciaCortoMediano,
+                        4
+                    ),
+
+                diferenciaCortoLargo:
+                    this.redondear(
+                        diferenciaCortoLargo,
+                        4
+                    ),
+
+                valorTendencia:
+                    this.redondear(
+                        valorTendencia,
+                        4
+                    ),
+
+                direccion,
+
+                scoreActividad:
+                    this.redondear(
+                        scoreActividad
+                    ),
+
+                scoreDireccion:
+                    this.redondear(
+                        scoreDireccion
+                    )
 
             },
 
             indicadores: {
 
                 frecuencia3:
-
                     this.obtenerFrecuencia(
-
                         resultadosVentanas,
-
                         3
-
                     ),
 
                 frecuencia5:
-
                     this.obtenerFrecuencia(
-
                         resultadosVentanas,
-
                         5
-
                     ),
 
                 frecuencia10:
-
                     this.obtenerFrecuencia(
-
                         resultadosVentanas,
-
                         10
-
                     ),
 
                 frecuencia20:
-
                     this.obtenerFrecuencia(
-
                         resultadosVentanas,
-
                         20
-
                     ),
 
                 frecuencia50:
-
                     this.obtenerFrecuencia(
-
                         resultadosVentanas,
-
                         50
-
                     ),
 
-                scoreTendencia:
+                porcentaje3:
+                    this.redondear(
+                        porcentaje3,
+                        4
+                    ),
 
-                    this.redondear(score)
+                porcentaje5:
+                    this.redondear(
+                        porcentaje5,
+                        4
+                    ),
+
+                porcentaje10:
+                    this.redondear(
+                        porcentaje10,
+                        4
+                    ),
+
+                porcentaje20:
+                    this.redondear(
+                        porcentaje20,
+                        4
+                    ),
+
+                porcentaje50:
+                    this.redondear(
+                        porcentaje50,
+                        4
+                    ),
+
+                cortoPlazo:
+                    this.redondear(
+                        cortoPlazo,
+                        4
+                    ),
+
+                medianoPlazo:
+                    this.redondear(
+                        medianoPlazo,
+                        4
+                    ),
+
+                largoPlazo:
+                    this.redondear(
+                        largoPlazo,
+                        4
+                    ),
+
+                valorTendencia:
+                    this.redondear(
+                        valorTendencia,
+                        4
+                    ),
+
+                direccion,
+
+                scoreTendencia:
+                    this.redondear(
+                        score
+                    )
 
             }
 
@@ -306,61 +474,84 @@ export default class MotorTendencia extends BaseMotor {
         OBTENER SEMANAS
     ==============================================================*/
 
-    obtenerSemanas(contexto) {
+   /*==============================================================
+    OBTENER SEMANAS
+==============================================================*/
 
-        if (
+obtenerSemanas(contexto) {
 
-            Array.isArray(
-
-                contexto.semanas
-
-            )
-
-        ) {
-
-            return contexto.semanas;
-
-        }
-
-
-        if (
-
-            contexto.historial &&
-
-            Array.isArray(
-
-                contexto.historial.semanas
-
-            )
-
-        ) {
-
-            return contexto.historial.semanas;
-
-        }
-
-
-        if (
-
-            contexto.data &&
-
-            Array.isArray(
-
-                contexto.data.semanas
-
-            )
-
-        ) {
-
-            return contexto.data.semanas;
-
-        }
-
+    if (!contexto) {
 
         return [];
 
     }
 
+
+    /*
+     * contexto.semanas
+     */
+
+    if (
+        Array.isArray(
+            contexto.semanas
+        )
+    ) {
+
+        return contexto.semanas;
+
+    }
+
+
+    /*
+     * contexto.historial directamente como array.
+     */
+
+    if (
+        Array.isArray(
+            contexto.historial
+        )
+    ) {
+
+        return contexto.historial;
+
+    }
+
+
+    /*
+     * contexto.historial.semanas
+     */
+
+    if (
+        contexto.historial &&
+        Array.isArray(
+            contexto.historial.semanas
+        )
+    ) {
+
+        return contexto.historial.semanas;
+
+    }
+
+
+    /*
+     * contexto.data.semanas
+     */
+
+    if (
+        contexto.data &&
+        Array.isArray(
+            contexto.data.semanas
+        )
+    ) {
+
+        return contexto.data.semanas;
+
+    }
+
+
+    return [];
+
+}
 
     /*==============================================================
         ORDENAR SEMANAS
@@ -368,44 +559,22 @@ export default class MotorTendencia extends BaseMotor {
 
     ordenarSemanas(semanas) {
 
-        const copia = [...semanas];
+        const copia =
+            [...semanas];
 
-
-        /*
-         * Primero intentamos utilizar el número
-         * de semana.
-         */
 
         if (
-
             copia.some(
-
                 semana =>
-
                     semana &&
-
                     semana.semana !== undefined
-
             )
-
         ) {
 
             copia.sort(
-
                 (a, b) =>
-
-                    Number(
-
-                        b.semana
-
-                    ) -
-
-                    Number(
-
-                        a.semana
-
-                    )
-
+                    Number(b.semana) -
+                    Number(a.semana)
             );
 
 
@@ -413,42 +582,19 @@ export default class MotorTendencia extends BaseMotor {
 
         }
 
-
-        /*
-         * Si no existe número de semana,
-         * utilizamos la fecha.
-         */
 
         if (
-
             copia.some(
-
                 semana =>
-
                     semana &&
-
                     semana.fecha
-
             )
-
         ) {
 
             copia.sort(
-
                 (a, b) =>
-
-                    new Date(
-
-                        b.fecha
-
-                    ) -
-
-                    new Date(
-
-                        a.fecha
-
-                    )
-
+                    new Date(b.fecha) -
+                    new Date(a.fecha)
             );
 
 
@@ -456,12 +602,6 @@ export default class MotorTendencia extends BaseMotor {
 
         }
 
-
-        /*
-         * Si no podemos determinar el orden,
-         * asumimos que el array ya está ordenado
-         * cronológicamente y lo invertimos.
-         */
 
         return copia.reverse();
 
@@ -473,12 +613,6 @@ export default class MotorTendencia extends BaseMotor {
     ==============================================================*/
 
     obtenerConfiguracionVentanas(contexto) {
-
-        /*
-         * Configuración predeterminada.
-         *
-         * La suma de pesos debe ser 100.
-         */
 
         const configuracionPredeterminada = [
 
@@ -510,57 +644,38 @@ export default class MotorTendencia extends BaseMotor {
         ];
 
 
-        /*
-         * Buscamos configuración personalizada.
-         */
-
         let configuracion = null;
 
 
         if (
-
             contexto.tendencia &&
-
             Array.isArray(
-
                 contexto.tendencia.ventanas
-
             )
-
         ) {
 
             configuracion =
-
                 contexto.tendencia.ventanas;
 
         }
 
-
         else if (
-
             contexto.configuracion &&
-
             contexto.configuracion.tendencia &&
-
             Array.isArray(
-
-                contexto.configuracion.tendencia.ventanas
-
+                contexto.configuracion
+                    .tendencia
+                    .ventanas
             )
-
         ) {
 
             configuracion =
-
-                contexto.configuracion.tendencia.ventanas;
+                contexto.configuracion
+                    .tendencia
+                    .ventanas;
 
         }
 
-
-        /*
-         * Si no existe configuración,
-         * usamos la predeterminada.
-         */
 
         if (!configuracion) {
 
@@ -569,10 +684,6 @@ export default class MotorTendencia extends BaseMotor {
         }
 
 
-        /*
-         * Validamos y limpiamos la configuración.
-         */
-
         const resultado =
 
             configuracion
@@ -580,19 +691,13 @@ export default class MotorTendencia extends BaseMotor {
                 .map(item => ({
 
                     semanas:
-
                         Number(
-
                             item.semanas
-
                         ),
 
                     peso:
-
                         Number(
-
                             item.peso
-
                         )
 
                 }))
@@ -600,17 +705,13 @@ export default class MotorTendencia extends BaseMotor {
                 .filter(item =>
 
                     Number.isInteger(
-
                         item.semanas
-
                     ) &&
 
                     item.semanas > 0 &&
 
                     Number.isFinite(
-
                         item.peso
-
                     ) &&
 
                     item.peso >= 0
@@ -625,25 +726,15 @@ export default class MotorTendencia extends BaseMotor {
         }
 
 
-        /*
-         * Normalizamos los pesos para que
-         * siempre sumen 100.
-         */
-
         const sumaPesos =
-
             resultado.reduce(
-
                 (suma, item) =>
-
                     suma + item.peso,
-
                 0
-
             );
 
 
-        if (sumaPesos === 0) {
+        if (sumaPesos <= 0) {
 
             return configuracionPredeterminada;
 
@@ -651,68 +742,44 @@ export default class MotorTendencia extends BaseMotor {
 
 
         return resultado.map(
-
             item => ({
 
                 semanas:
-
                     item.semanas,
 
                 peso:
-
                     (
-
                         item.peso /
-
                         sumaPesos
-
                     ) * 100
 
             })
-
         );
 
     }
 
 
     /*==============================================================
-        CALCULAR UNA VENTANA
+        CALCULAR VENTANA
     ==============================================================*/
 
     calcularVentana(
-
         numero,
-
         semanas,
-
         cantidadSemanas
-
     ) {
 
-        /*
-         * Tomamos únicamente las semanas
-         * disponibles.
-         */
-
         const cantidadReal =
-
             Math.min(
-
                 cantidadSemanas,
-
                 semanas.length
-
             );
 
 
         const muestra =
-
             semanas.slice(
-
                 0,
-
                 cantidadReal
-
             );
 
 
@@ -722,15 +789,10 @@ export default class MotorTendencia extends BaseMotor {
         for (const semana of muestra) {
 
             if (
-
                 this.semanaContieneNumero(
-
                     semana,
-
                     numero
-
                 )
-
             ) {
 
                 apariciones++;
@@ -740,68 +802,39 @@ export default class MotorTendencia extends BaseMotor {
         }
 
 
-        /*
-         * Frecuencia relativa de la ventana.
-         */
-
-        const frecuencia =
+        const porcentaje =
 
             cantidadReal > 0
 
                 ? (
-
                     apariciones /
-
                     cantidadReal
-
                 ) * 100
 
                 : 0;
 
 
-        /*
-         * Score de la ventana.
-         *
-         * La frecuencia máxima teórica sería
-         * 100% si el número apareciera en
-         * todas las semanas.
-         */
-
-        const score =
-
-            this.normalizarScore(
-
-                frecuencia
-
-            );
-
-
         return {
 
             semanasSolicitadas:
-
                 cantidadSemanas,
 
             semanasAnalizadas:
-
                 cantidadReal,
 
             apariciones,
 
-            frecuencia:
-
+            porcentaje:
                 this.redondear(
-
-                    frecuencia
-
+                    porcentaje,
+                    4
                 ),
 
             score:
-
                 this.redondear(
-
-                    score
-
+                    this.normalizarScore(
+                        porcentaje
+                    )
                 )
 
         };
@@ -810,120 +843,17 @@ export default class MotorTendencia extends BaseMotor {
 
 
     /*==============================================================
-        CALCULAR SCORE PONDERADO
-    ==============================================================*/
-
-    calcularScorePonderado(
-
-        resultados,
-
-        ventanas
-
-    ) {
-
-        let score = 0;
-
-        let pesoUtilizado = 0;
-
-
-        for (const ventana of ventanas) {
-
-            const resultado =
-
-                resultados[
-
-                    ventana.semanas
-
-                ];
-
-
-            if (!resultado) {
-
-                continue;
-
-            }
-
-
-            /*
-             * Si no existen suficientes semanas,
-             * utilizamos igualmente la información
-             * disponible, pero registramos solamente
-             * el score real de esa ventana.
-             */
-
-            score +=
-
-                resultado.score *
-
-                (
-
-                    ventana.peso /
-
-                    100
-
-                );
-
-
-            pesoUtilizado +=
-
-                ventana.peso;
-
-        }
-
-
-        if (pesoUtilizado === 0) {
-
-            return 0;
-
-        }
-
-
-        /*
-         * Normalizamos nuevamente en caso de
-         * que alguna configuración personalizada
-         * haya dejado pesos incompletos.
-         */
-
-        const resultadoFinal =
-
-            score *
-
-            (
-
-                100 /
-
-                pesoUtilizado
-
-            );
-
-
-        return this.normalizarScore(
-
-            resultadoFinal
-
-        );
-
-    }
-
-
-    /*==============================================================
-        OBTENER FRECUENCIA
+        OBTENER APARICIONES
     ==============================================================*/
 
     obtenerFrecuencia(
-
         resultados,
-
         ventana
-
     ) {
 
         if (
-
             !resultados ||
-
             !resultados[ventana]
-
         ) {
 
             return 0;
@@ -932,10 +862,140 @@ export default class MotorTendencia extends BaseMotor {
 
 
         return resultados[
-
             ventana
-
         ].apariciones;
+
+    }
+
+
+    /*==============================================================
+        OBTENER PORCENTAJE
+    ==============================================================*/
+
+    obtenerPorcentaje(
+        resultados,
+        ventana
+    ) {
+
+        if (
+            !resultados ||
+            !resultados[ventana]
+        ) {
+
+            return 0;
+
+        }
+
+
+        return Number(
+            resultados[
+                ventana
+            ].porcentaje
+        ) || 0;
+
+    }
+
+
+    /*==============================================================
+        SCORE DE ACTIVIDAD
+    ==============================================================*/
+
+    calcularScoreActividad(
+        porcentaje3,
+        porcentaje5,
+        porcentaje10
+    ) {
+
+        const score =
+
+            (
+                porcentaje3 * 0.45
+            ) +
+
+            (
+                porcentaje5 * 0.35
+            ) +
+
+            (
+                porcentaje10 * 0.20
+            );
+
+
+        return this.normalizarScore(
+            score
+        );
+
+    }
+
+
+    /*==============================================================
+        SCORE DE DIRECCIÓN
+    ==============================================================*/
+
+    calcularScoreDireccion(
+        valorTendencia
+    ) {
+
+        /*
+         * Tendencia neutra = 50.
+         *
+         * Tendencia positiva aumenta el score.
+         * Tendencia negativa lo reduce.
+         *
+         * Factor 2 provisional.
+         * Posteriormente podrá ser optimizado
+         * mediante MotorEvaluacion.
+         */
+
+        const score =
+            50 +
+            (
+                valorTendencia * 2
+            );
+
+
+        return this.normalizarScore(
+            score
+        );
+
+    }
+
+
+    /*==============================================================
+        CLASIFICAR TENDENCIA
+    ==============================================================*/
+
+    clasificarTendencia(valor) {
+
+        if (valor >= 15) {
+
+            return "ascendente_fuerte";
+
+        }
+
+
+        if (valor >= 5) {
+
+            return "ascendente";
+
+        }
+
+
+        if (valor <= -15) {
+
+            return "descendente_fuerte";
+
+        }
+
+
+        if (valor <= -5) {
+
+            return "descendente";
+
+        }
+
+
+        return "estable";
 
     }
 
@@ -945,11 +1005,8 @@ export default class MotorTendencia extends BaseMotor {
     ==============================================================*/
 
     semanaContieneNumero(
-
         semana,
-
         numero
-
     ) {
 
         if (!semana) {
@@ -972,15 +1029,7 @@ export default class MotorTendencia extends BaseMotor {
 
         for (const lista of listas) {
 
-            if (
-
-                !Array.isArray(
-
-                    lista
-
-                )
-
-            ) {
+            if (!Array.isArray(lista)) {
 
                 continue;
 
@@ -988,17 +1037,11 @@ export default class MotorTendencia extends BaseMotor {
 
 
             if (
-
                 lista.some(
-
                     valor =>
-
                         Number(valor) ===
-
                         Number(numero)
-
                 )
-
             ) {
 
                 return true;
@@ -1014,21 +1057,10 @@ export default class MotorTendencia extends BaseMotor {
 
 
     /*==============================================================
-        CALCULAR CONFIANZA
+        CONFIANZA
     ==============================================================*/
 
-    calcularConfianza(
-
-        totalSemanas
-
-    ) {
-
-        /*
-         * La tendencia necesita una cantidad mínima
-         * de historial para ser representativa.
-         *
-         * No significa probabilidad de acierto.
-         */
+    calcularConfianza(totalSemanas) {
 
         if (totalSemanas <= 0) {
 
@@ -1037,87 +1069,126 @@ export default class MotorTendencia extends BaseMotor {
         }
 
 
-        /*
-         * Utilizamos una función de saturación.
-         *
-         * 10 semanas  -> evidencia baja
-         * 50 semanas  -> evidencia media
-         * 100+        -> evidencia alta
-         */
-
         const confianza =
 
             100 *
 
             (
-
                 1 -
-
                 Math.exp(
-
-                    -totalSemanas /
-
-                    80
-
+                    -totalSemanas / 80
                 )
-
             );
 
 
         return this.normalizarConfianza(
-
             confianza
-
         );
 
     }
 
 
     /*==============================================================
-        OBTENER PESO DEL MOTOR
+        RESULTADO SIN DATOS
+    ==============================================================*/
+
+    resultadoSinDatos(
+        numero,
+        contexto,
+        mensaje
+    ) {
+
+        return new MotorResult({
+
+            numero,
+
+            motor:
+                this.nombre,
+
+            version:
+                this.version,
+
+            score: 0,
+
+            confianza: 0,
+
+            peso:
+                this.obtenerPeso(
+                    contexto
+                ),
+
+            detalle: {
+
+                mensaje
+
+            },
+
+            indicadores: {
+
+                frecuencia3: 0,
+                frecuencia5: 0,
+                frecuencia10: 0,
+                frecuencia20: 0,
+                frecuencia50: 0,
+
+                porcentaje3: 0,
+                porcentaje5: 0,
+                porcentaje10: 0,
+                porcentaje20: 0,
+                porcentaje50: 0,
+
+                cortoPlazo: 0,
+                medianoPlazo: 0,
+                largoPlazo: 0,
+
+                valorTendencia: 0,
+
+                direccion:
+                    "sin_datos",
+
+                scoreTendencia: 0
+
+            }
+
+        });
+
+    }
+
+
+    /*==============================================================
+        OBTENER PESO
     ==============================================================*/
 
     obtenerPeso(contexto) {
 
         if (
-
             contexto.pesos &&
-
             contexto.pesos.tendencia !== undefined
-
         ) {
 
             return Number(
-
                 contexto.pesos.tendencia
-
             );
 
         }
 
 
         if (
-
             contexto.configuracion &&
-
             contexto.configuracion.pesos &&
-
-            contexto.configuracion.pesos.tendencia !== undefined
-
+            contexto.configuracion
+                .pesos
+                .tendencia !== undefined
         ) {
 
             return Number(
-
-                contexto.configuracion.pesos.tendencia
-
+                contexto.configuracion
+                    .pesos
+                    .tendencia
             );
 
         }
 
-
-        /*
-         * Peso predeterminado.
-         */
 
         return 20;
 

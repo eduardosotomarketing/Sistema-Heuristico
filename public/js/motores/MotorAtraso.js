@@ -1,4 +1,3 @@
-
 /**********************************************************************
  * SISTEMA HEURÍSTICO EVOLUTIVO
  *
@@ -57,17 +56,57 @@ export default class MotorAtraso extends BaseMotor {
 
     calcular(numero, contexto) {
 
+        /*
+         * Normalizar número.
+         */
+
         const numeroValidado =
 
-            this.validarNumero(numero);
+            this.normalizarNumero(numero);
 
 
-        this.validarContexto(contexto);
+        /*
+         * Validar rango 00-99.
+         */
+
+        if (
+
+            !this.validarNumero(
+
+                numeroValidado
+
+            )
+
+        ) {
+
+            throw new Error(
+
+                `Número inválido: ${numero}. ` +
+                "Debe estar entre 00 y 99."
+
+            );
+
+        }
+
+
+        /*
+         * Validar contexto.
+         */
+
+        this.validarContexto(
+
+            contexto
+
+        );
 
 
         const semanas =
 
-            this.obtenerSemanas(contexto);
+            this.obtenerSemanas(
+
+                contexto
+
+            );
 
 
         /*
@@ -485,6 +524,17 @@ export default class MotorAtraso extends BaseMotor {
 
     obtenerSemanas(contexto) {
 
+        if (!contexto) {
+
+            return [];
+
+        }
+
+
+        /*
+         * contexto.semanas
+         */
+
         if (
 
             Array.isArray(
@@ -499,6 +549,31 @@ export default class MotorAtraso extends BaseMotor {
 
         }
 
+
+        /*
+         * contexto.historial directamente como array.
+         *
+         * Esta es nuestra estructura principal actual.
+         */
+
+        if (
+
+            Array.isArray(
+
+                contexto.historial
+
+            )
+
+        ) {
+
+            return contexto.historial;
+
+        }
+
+
+        /*
+         * contexto.historial.semanas
+         */
 
         if (
 
@@ -516,6 +591,10 @@ export default class MotorAtraso extends BaseMotor {
 
         }
 
+
+        /*
+         * contexto.data.semanas
+         */
 
         if (
 
@@ -1886,4 +1965,3 @@ export default class MotorAtraso extends BaseMotor {
     }
 
 }
-

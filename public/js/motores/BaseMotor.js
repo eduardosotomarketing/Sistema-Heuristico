@@ -656,6 +656,74 @@ menor(lista = []) {
     }
 
 
+/*==============================================================
+    VALIDAR CONTEXTO
+==============================================================*/
+
+validarContexto(contexto) {
+
+    if (
+        !contexto ||
+        typeof contexto !== "object"
+    ) {
+
+        throw new Error(
+            "El contexto del motor es inválido."
+        );
+
+    }
+
+    /*
+     * El motor puede recibir las semanas
+     * directamente:
+     *
+     * contexto.semanas
+     *
+     * o mediante otras estructuras.
+     */
+
+    const tieneSemanasDirectas =
+        Array.isArray(
+            contexto.semanas
+        );
+
+
+    const tieneHistorial =
+        Array.isArray(
+            contexto.historial
+        ) ||
+        (
+            contexto.historial &&
+            Array.isArray(
+                contexto.historial.semanas
+            )
+        );
+
+
+    const tieneData =
+        contexto.data &&
+        Array.isArray(
+            contexto.data.semanas
+        );
+
+
+    if (
+        !tieneSemanasDirectas &&
+        !tieneHistorial &&
+        !tieneData
+    ) {
+
+        throw new Error(
+            "El contexto no contiene un historial de semanas válido."
+        );
+
+    }
+
+
+    return true;
+
+}
+
     /*==============================================================
         OBTENER NÚMEROS POSIBLES
     ==============================================================*/
@@ -685,7 +753,52 @@ menor(lista = []) {
         return numeros;
 
     }
+/*==============================================================
+    NORMALIZAR SCORE
+==============================================================*/
 
+normalizarScore(valor) {
+
+    const numero =
+        Number(valor);
+
+
+    if (
+        !Number.isFinite(numero)
+    ) {
+
+        return 0;
+
+    }
+
+
+    return Math.max(
+        0,
+        Math.min(
+            100,
+            numero
+        )
+    );
+
+}
+
+/*==============================================================
+    NORMALIZAR CONFIANZA
+==============================================================*/
+
+normalizarConfianza(valor) {
+
+    const numero = Number(valor);
+
+    if (!Number.isFinite(numero)) {
+
+        return 0;
+
+    }
+
+    return this.limitar(numero);
+
+}
 
     /*==============================================================
         REINICIAR
