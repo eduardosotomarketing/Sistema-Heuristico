@@ -14,6 +14,9 @@
  *   - MotorTendencia
  *   - MotorRepeticion
  *   - MotorHistorico
+ *   - MotorParidad
+ *   - MotorRangos
+ *   - MotorDistribucion
  *
  **********************************************************************/
 
@@ -45,6 +48,15 @@ import MotorRepeticion
 
 import MotorHistorico
     from "./motores/MotorHistorico.js";
+
+import MotorParidad
+    from "./motores/MotorParidad.js";
+
+import MotorRangos
+    from "./motores/MotorRangos.js";
+
+import MotorDistribucion
+    from "./motores/MotorDistribucion.js";
 
 
 /*====================================================================
@@ -96,6 +108,12 @@ class EntornoPruebas {
         this.motorRepeticion = null;
 
         this.motorHistorico = null;
+
+        this.motorParidad = null;
+
+        this.motorRangos = null;
+
+        this.motorDistribucion = null;
 
     }
 
@@ -325,6 +343,78 @@ class EntornoPruebas {
 
 
             /*========================================================
+                MOTOR PARIDAD
+            ========================================================*/
+
+            this.motorParidad =
+                new MotorParidad();
+
+
+            this.motorParidad.inicializar({
+
+                historial:
+                    this.datosHistorial,
+
+                estadisticas:
+                    this.obtenerArrayEstadisticas()
+
+            });
+
+
+            console.log(
+                "MotorParidad inicializado."
+            );
+
+
+            /*========================================================
+                MOTOR RANGOS
+            ========================================================*/
+
+            this.motorRangos =
+                new MotorRangos();
+
+
+            this.motorRangos.inicializar({
+
+                historial:
+                    this.datosHistorial,
+
+                estadisticas:
+                    this.obtenerArrayEstadisticas()
+
+            });
+
+
+            console.log(
+                "MotorRangos inicializado."
+            );
+
+
+            /*========================================================
+                MOTOR DISTRIBUCIÓN
+            ========================================================*/
+
+            this.motorDistribucion =
+                new MotorDistribucion();
+
+
+            this.motorDistribucion.inicializar({
+
+                historial:
+                    this.datosHistorial,
+
+                estadisticas:
+                    this.obtenerArrayEstadisticas()
+
+            });
+
+
+            console.log(
+                "MotorDistribucion inicializado."
+            );
+
+
+            /*========================================================
                 FINALIZACIÓN
             ========================================================*/
 
@@ -503,7 +593,6 @@ class EntornoPruebas {
 
         this.verificarInicializacion();
 
-
         return this.motorFrecuencia.calcular(
 
             numero,
@@ -527,7 +616,6 @@ class EntornoPruebas {
     ) {
 
         this.verificarInicializacion();
-
 
         return this.motorAtraso.calcular(
 
@@ -553,7 +641,6 @@ class EntornoPruebas {
 
         this.verificarInicializacion();
 
-
         return this.motorTendencia.calcular(
 
             numero,
@@ -577,7 +664,6 @@ class EntornoPruebas {
     ) {
 
         this.verificarInicializacion();
-
 
         return this.motorRepeticion.calcular(
 
@@ -603,17 +689,89 @@ class EntornoPruebas {
 
         this.verificarInicializacion();
 
+        return this.motorHistorico.calcular(
 
-        if (!this.motorHistorico) {
+            numero,
+
+            this.crearContexto(
+                configuracion
+            )
+
+        );
+
+    }
+
+
+    /*================================================================
+        MOTOR PARIDAD
+    ================================================================*/
+
+    paridad(
+        numero,
+        configuracion = {}
+    ) {
+
+        this.verificarInicializacion();
+
+        return this.motorParidad.calcular(
+
+            numero,
+
+            this.crearContexto(
+                configuracion
+            )
+
+        );
+
+    }
+
+
+    /*================================================================
+        MOTOR RANGOS
+    ================================================================*/
+
+    rangos(
+        numero,
+        configuracion = {}
+    ) {
+
+        this.verificarInicializacion();
+
+        return this.motorRangos.calcular(
+
+            numero,
+
+            this.crearContexto(
+                configuracion
+            )
+
+        );
+
+    }
+
+
+    /*================================================================
+        MOTOR DISTRIBUCIÓN
+    ================================================================*/
+
+    distribucion(
+        numero,
+        configuracion = {}
+    ) {
+
+        this.verificarInicializacion();
+
+
+        if (!this.motorDistribucion) {
 
             throw new Error(
-                "MotorHistorico no está disponible."
+                "MotorDistribucion no está disponible."
             );
 
         }
 
 
-        return this.motorHistorico.calcular(
+        return this.motorDistribucion.calcular(
 
             numero,
 
@@ -641,29 +799,28 @@ class EntornoPruebas {
                 Number(numero),
 
             frecuencia:
-                this.frecuencia(
-                    numero
-                ),
+                this.frecuencia(numero),
 
             atraso:
-                this.atraso(
-                    numero
-                ),
+                this.atraso(numero),
 
             tendencia:
-                this.tendencia(
-                    numero
-                ),
+                this.tendencia(numero),
 
             repeticion:
-                this.repeticion(
-                    numero
-                ),
+                this.repeticion(numero),
 
             historico:
-                this.historico(
-                    numero
-                )
+                this.historico(numero),
+
+            paridad:
+                this.paridad(numero),
+
+            rangos:
+                this.rangos(numero),
+
+            distribucion:
+                this.distribucion(numero)
 
         };
 
@@ -693,38 +850,47 @@ class EntornoPruebas {
 
             baseMotor:
                 this.baseMotor
-                    ? this.baseMotor
-                        .obtenerInformacion()
+                    ? this.baseMotor.obtenerInformacion()
                     : null,
 
             motorFrecuencia:
                 this.motorFrecuencia
-                    ? this.motorFrecuencia
-                        .obtenerInformacion()
+                    ? this.motorFrecuencia.obtenerInformacion()
                     : null,
 
             motorAtraso:
                 this.motorAtraso
-                    ? this.motorAtraso
-                        .obtenerInformacion()
+                    ? this.motorAtraso.obtenerInformacion()
                     : null,
 
             motorTendencia:
                 this.motorTendencia
-                    ? this.motorTendencia
-                        .obtenerInformacion()
+                    ? this.motorTendencia.obtenerInformacion()
                     : null,
 
             motorRepeticion:
                 this.motorRepeticion
-                    ? this.motorRepeticion
-                        .obtenerInformacion()
+                    ? this.motorRepeticion.obtenerInformacion()
                     : null,
 
             motorHistorico:
                 this.motorHistorico
-                    ? this.motorHistorico
-                        .obtenerInformacion()
+                    ? this.motorHistorico.obtenerInformacion()
+                    : null,
+
+            motorParidad:
+                this.motorParidad
+                    ? this.motorParidad.obtenerInformacion()
+                    : null,
+
+            motorRangos:
+                this.motorRangos
+                    ? this.motorRangos.obtenerInformacion()
+                    : null,
+
+            motorDistribucion:
+                this.motorDistribucion
+                    ? this.motorDistribucion.obtenerInformacion()
                     : null
 
         };
@@ -808,412 +974,124 @@ class EntornoPruebas {
 
 
     /*================================================================
-        TODOS - FRECUENCIA
+        EJECUTAR TODOS
+    ================================================================*/
+
+    ejecutarTodos(funcion) {
+
+        this.verificarInicializacion();
+
+
+        const resultados = [];
+
+
+        for (
+            let numero = 0;
+            numero <= 99;
+            numero++
+        ) {
+
+            resultados.push(
+                funcion(numero)
+            );
+
+        }
+
+
+        return resultados;
+
+    }
+
+
+    /*================================================================
+        TODOS
     ================================================================*/
 
     frecuenciaTodos() {
 
-        this.verificarInicializacion();
-
-
-        const resultados = [];
-
-
-        for (
-            let numero = 0;
-            numero <= 99;
-            numero++
-        ) {
-
-            resultados.push(
+        return this.ejecutarTodos(
+            numero =>
                 this.frecuencia(numero)
-            );
-
-        }
-
-
-        return resultados;
+        );
 
     }
 
-
-    /*================================================================
-        TODOS - ATRASO
-    ================================================================*/
 
     atrasoTodos() {
 
-        this.verificarInicializacion();
-
-
-        const resultados = [];
-
-
-        for (
-            let numero = 0;
-            numero <= 99;
-            numero++
-        ) {
-
-            resultados.push(
+        return this.ejecutarTodos(
+            numero =>
                 this.atraso(numero)
-            );
-
-        }
-
-
-        return resultados;
+        );
 
     }
 
-
-    /*================================================================
-        TODOS - TENDENCIA
-    ================================================================*/
 
     tendenciaTodos() {
 
-        this.verificarInicializacion();
-
-
-        const resultados = [];
-
-
-        for (
-            let numero = 0;
-            numero <= 99;
-            numero++
-        ) {
-
-            resultados.push(
+        return this.ejecutarTodos(
+            numero =>
                 this.tendencia(numero)
-            );
-
-        }
-
-
-        return resultados;
+        );
 
     }
 
-
-    /*================================================================
-        TODOS - REPETICIÓN
-    ================================================================*/
 
     repeticionTodos() {
 
-        this.verificarInicializacion();
-
-
-        const resultados = [];
-
-
-        for (
-            let numero = 0;
-            numero <= 99;
-            numero++
-        ) {
-
-            resultados.push(
+        return this.ejecutarTodos(
+            numero =>
                 this.repeticion(numero)
-            );
-
-        }
-
-
-        return resultados;
+        );
 
     }
 
-
-    /*================================================================
-        TODOS - HISTÓRICO
-    ================================================================*/
 
     historicoTodos() {
 
-        this.verificarInicializacion();
-
-
-        const resultados = [];
-
-
-        for (
-            let numero = 0;
-            numero <= 99;
-            numero++
-        ) {
-
-            resultados.push(
+        return this.ejecutarTodos(
+            numero =>
                 this.historico(numero)
-            );
+        );
 
-        }
+    }
 
 
-        return resultados;
+    paridadTodos() {
+
+        return this.ejecutarTodos(
+            numero =>
+                this.paridad(numero)
+        );
+
+    }
+
+
+    rangosTodos() {
+
+        return this.ejecutarTodos(
+            numero =>
+                this.rangos(numero)
+        );
+
+    }
+
+
+    distribucionTodos() {
+
+        return this.ejecutarTodos(
+            numero =>
+                this.distribucion(numero)
+        );
 
     }
 
 
     /*================================================================
-        TABLA FRECUENCIA
+        TABLA DISTRIBUCIÓN
     ================================================================*/
 
-    tablaFrecuencia(
-        desde = 0,
-        hasta = 99
-    ) {
-
-        const resultados = [];
-
-
-        for (
-            let numero = desde;
-            numero <= hasta;
-            numero++
-        ) {
-
-            const resultado =
-                this.frecuencia(numero);
-
-
-            resultados.push({
-
-                numero:
-                    resultado.numero,
-
-                texto:
-                    resultado.numeroTexto,
-
-                frecuenciaHistorica:
-                    resultado.indicadores
-                        .frecuenciaHistorica,
-
-                frecuencia3:
-                    resultado.indicadores
-                        .frecuencia3,
-
-                frecuencia5:
-                    resultado.indicadores
-                        .frecuencia5,
-
-                score:
-                    resultado.score,
-
-                confianza:
-                    resultado.confianza
-
-            });
-
-        }
-
-
-        console.table(resultados);
-
-        return resultados;
-
-    }
-
-
-    /*================================================================
-        TABLA ATRASO
-    ================================================================*/
-
-    tablaAtraso(
-        desde = 0,
-        hasta = 99
-    ) {
-
-        const resultados = [];
-
-
-        for (
-            let numero = desde;
-            numero <= hasta;
-            numero++
-        ) {
-
-            const resultado =
-                this.atraso(numero);
-
-
-            resultados.push({
-
-                numero:
-                    resultado.numero,
-
-                texto:
-                    resultado.numeroTexto,
-
-                atraso:
-                    resultado.indicadores
-                        .atrasoActual,
-
-                apariciones:
-                    resultado.indicadores
-                        .apariciones,
-
-                score:
-                    resultado.score,
-
-                confianza:
-                    resultado.confianza
-
-            });
-
-        }
-
-
-        console.table(resultados);
-
-        return resultados;
-
-    }
-
-
-    /*================================================================
-        TABLA TENDENCIA
-    ================================================================*/
-
-    tablaTendencia(
-        desde = 0,
-        hasta = 99
-    ) {
-
-        const resultados = [];
-
-
-        for (
-            let numero = desde;
-            numero <= hasta;
-            numero++
-        ) {
-
-            const resultado =
-                this.tendencia(numero);
-
-
-            resultados.push({
-
-                numero:
-                    resultado.numero,
-
-                texto:
-                    resultado.numeroTexto,
-
-                f3:
-                    resultado.indicadores
-                        .frecuencia3,
-
-                f5:
-                    resultado.indicadores
-                        .frecuencia5,
-
-                f10:
-                    resultado.indicadores
-                        .frecuencia10,
-
-                tendencia:
-                    resultado.indicadores
-                        .valorTendencia,
-
-                direccion:
-                    resultado.indicadores
-                        .direccion,
-
-                score:
-                    resultado.score,
-
-                confianza:
-                    resultado.confianza
-
-            });
-
-        }
-
-
-        console.table(resultados);
-
-        return resultados;
-
-    }
-
-
-    /*================================================================
-        TABLA REPETICIÓN
-    ================================================================*/
-
-    tablaRepeticion(
-        desde = 0,
-        hasta = 99
-    ) {
-
-        const resultados = [];
-
-
-        for (
-            let numero = desde;
-            numero <= hasta;
-            numero++
-        ) {
-
-            const resultado =
-                this.repeticion(numero);
-
-
-            resultados.push({
-
-                numero:
-                    resultado.numero,
-
-                texto:
-                    resultado.numeroTexto,
-
-                apariciones:
-                    resultado.indicadores
-                        .apariciones,
-
-                consecutivas:
-                    resultado.indicadores
-                        .repeticionesConsecutivas,
-
-                rachaActual:
-                    resultado.indicadores
-                        .rachaActual,
-
-                rachaMaxima:
-                    resultado.indicadores
-                        .rachaMaxima,
-
-                intensidad:
-                    resultado.indicadores
-                        .intensidad,
-
-                score:
-                    resultado.score,
-
-                confianza:
-                    resultado.confianza
-
-            });
-
-        }
-
-
-        console.table(resultados);
-
-        return resultados;
-
-    }
-
-
-    /*================================================================
-        TABLA HISTÓRICO
-    ================================================================*/
-
-    tablaHistorico(
+    tablaDistribucion(
         desde = 0,
         hasta = 99
     ) {
@@ -1231,7 +1109,7 @@ class EntornoPruebas {
         ) {
 
             const resultado =
-                this.historico(numero);
+                this.distribucion(numero);
 
 
             resultados.push({
@@ -1242,21 +1120,32 @@ class EntornoPruebas {
                 texto:
                     resultado.numeroTexto,
 
-                apariciones:
-                    resultado.indicadores
-                        .frecuenciaHistorica,
+                rango:
+                    resultado.indicadores.rango,
 
-                porcentaje:
-                    resultado.indicadores
-                        .porcentajeHistorico,
+                decena:
+                    resultado.indicadores.decena,
 
-                posicion:
-                    resultado.detalle
-                        .posicionHistorica,
+                terminacion:
+                    resultado.indicadores.terminacion,
 
-                frecuenciaRelativa:
-                    resultado.detalle
-                        .frecuenciaRelativa,
+                paridad:
+                    resultado.indicadores.paridad,
+
+                frecuenciaNumero:
+                    resultado.indicadores.frecuenciaNumero,
+
+                frecuenciaRango:
+                    resultado.indicadores.frecuenciaRango,
+
+                frecuenciaTerminacion:
+                    resultado.indicadores.frecuenciaTerminacion,
+
+                frecuenciaParidad:
+                    resultado.indicadores.frecuenciaParidad,
+
+                frecuenciaReciente:
+                    resultado.indicadores.frecuenciaReciente,
 
                 score:
                     resultado.score,
@@ -1294,73 +1183,59 @@ class EntornoPruebas {
         const tabla = [
 
             {
-                motor:
-                    "Frecuencia",
-
-                score:
-                    resultado.frecuencia.score,
-
-                confianza:
-                    resultado.frecuencia.confianza,
-
-                peso:
-                    resultado.frecuencia.peso
+                motor: "Frecuencia",
+                score: resultado.frecuencia.score,
+                confianza: resultado.frecuencia.confianza,
+                peso: resultado.frecuencia.peso
             },
 
             {
-                motor:
-                    "Atraso",
-
-                score:
-                    resultado.atraso.score,
-
-                confianza:
-                    resultado.atraso.confianza,
-
-                peso:
-                    resultado.atraso.peso
+                motor: "Atraso",
+                score: resultado.atraso.score,
+                confianza: resultado.atraso.confianza,
+                peso: resultado.atraso.peso
             },
 
             {
-                motor:
-                    "Tendencia",
-
-                score:
-                    resultado.tendencia.score,
-
-                confianza:
-                    resultado.tendencia.confianza,
-
-                peso:
-                    resultado.tendencia.peso
+                motor: "Tendencia",
+                score: resultado.tendencia.score,
+                confianza: resultado.tendencia.confianza,
+                peso: resultado.tendencia.peso
             },
 
             {
-                motor:
-                    "Repeticion",
-
-                score:
-                    resultado.repeticion.score,
-
-                confianza:
-                    resultado.repeticion.confianza,
-
-                peso:
-                    resultado.repeticion.peso
+                motor: "Repeticion",
+                score: resultado.repeticion.score,
+                confianza: resultado.repeticion.confianza,
+                peso: resultado.repeticion.peso
             },
 
             {
-                motor:
-                    "Historico",
+                motor: "Historico",
+                score: resultado.historico.score,
+                confianza: resultado.historico.confianza,
+                peso: resultado.historico.peso
+            },
 
-                score:
-                    resultado.historico.score,
+            {
+                motor: "Paridad",
+                score: resultado.paridad.score,
+                confianza: resultado.paridad.confianza,
+                peso: resultado.paridad.peso
+            },
 
-                confianza:
-                    resultado.historico.confianza,
+            {
+                motor: "Rangos",
+                score: resultado.rangos.score,
+                confianza: resultado.rangos.confianza,
+                peso: resultado.rangos.peso
+            },
 
-                peso:
-                    resultado.historico.peso
+            {
+                motor: "Distribucion",
+                score: resultado.distribucion.score,
+                confianza: resultado.distribucion.confianza,
+                peso: resultado.distribucion.peso
             }
 
         ];

@@ -44,27 +44,50 @@ export default class MotorHistorico extends BaseMotor {
         MÉTODO PRINCIPAL
     ==============================================================*/
 
-    calcular(numero, contexto) {
+  calcular(numero, contexto) {
 
-        /*
-         * Validamos los parámetros recibidos.
-         */
+    /*
+     * Normalizar número.
+     */
 
-        const numeroValidado =
-
-            this.validarNumero(numero);
-
-
-        this.validarContexto(contexto);
+    const numeroValidado =
+        this.normalizarNumero(numero);
 
 
-        /*
-         * Obtenemos las semanas disponibles.
-         */
+    /*
+     * Validar rango 00-99.
+     */
 
-        const semanas =
+    if (
+        !this.validarNumero(
+            numeroValidado
+        )
+    ) {
 
-            this.obtenerSemanas(contexto);
+        throw new Error(
+            `Número inválido: ${numero}. Debe estar entre 00 y 99.`
+        );
+
+    }
+
+
+    /*
+     * Validar contexto.
+     */
+
+    this.validarContexto(
+        contexto
+    );
+
+
+    /*
+     * Obtener semanas.
+     */
+
+    const semanas =
+        this.obtenerSemanas(
+            contexto
+        );
 
 
         /*
@@ -332,70 +355,84 @@ export default class MotorHistorico extends BaseMotor {
     }
 
 
-    /*==============================================================
-        OBTENER SEMANAS
-    ==============================================================*/
+   /*==============================================================
+    OBTENER SEMANAS
+==============================================================*/
 
-    obtenerSemanas(contexto) {
+obtenerSemanas(contexto) {
 
-        /*
-         * Permitimos varias estructuras de contexto.
-         *
-         * Esto hará que el motor sea más flexible.
-         */
-
-        if (
-
-            Array.isArray(
-
-                contexto.semanas
-
-            )
-
-        ) {
-
-            return contexto.semanas;
-
-        }
-
-
-        if (
-
-            contexto.historial &&
-
-            Array.isArray(
-
-                contexto.historial.semanas
-
-            )
-
-        ) {
-
-            return contexto.historial.semanas;
-
-        }
-
-
-        if (
-
-            contexto.data &&
-
-            Array.isArray(
-
-                contexto.data.semanas
-
-            )
-
-        ) {
-
-            return contexto.data.semanas;
-
-        }
-
+    if (!contexto) {
 
         return [];
 
     }
+
+
+    /*
+     * contexto.semanas
+     */
+
+    if (
+        Array.isArray(
+            contexto.semanas
+        )
+    ) {
+
+        return contexto.semanas;
+
+    }
+
+
+    /*
+     * contexto.historial directamente como array.
+     */
+
+    if (
+        Array.isArray(
+            contexto.historial
+        )
+    ) {
+
+        return contexto.historial;
+
+    }
+
+
+    /*
+     * contexto.historial.semanas
+     */
+
+    if (
+        contexto.historial &&
+        Array.isArray(
+            contexto.historial.semanas
+        )
+    ) {
+
+        return contexto.historial.semanas;
+
+    }
+
+
+    /*
+     * contexto.data.semanas
+     */
+
+    if (
+        contexto.data &&
+        Array.isArray(
+            contexto.data.semanas
+        )
+    ) {
+
+        return contexto.data.semanas;
+
+    }
+
+
+    return [];
+
+}
 
 
     /*==============================================================
