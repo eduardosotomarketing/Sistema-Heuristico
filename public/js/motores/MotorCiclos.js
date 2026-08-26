@@ -56,17 +56,31 @@ export default class MotorCiclos extends BaseMotor {
 
     calcular(numero, contexto) {
 
-        const numeroValidado =
-
-            this.validarNumero(numero);
-
-
-        this.validarContexto(contexto);
+        
+const numeroValidado =
+    this.normalizarNumero(numero);
 
 
-        const semanas =
+if (
+    !this.validarNumero(
+        numeroValidado
+    )
+) {
 
-            this.obtenerSemanas(contexto);
+    throw new Error(
+        `Número inválido: ${numero}. Debe estar entre 00 y 99.`
+    );
+
+}
+
+
+this.validarContexto(contexto);
+
+
+const semanas =
+    this.obtenerSemanas(contexto);
+
+
 
 
         /*
@@ -612,65 +626,68 @@ export default class MotorCiclos extends BaseMotor {
     }
 
 
-    /*==============================================================
-        OBTENER SEMANAS
-    ==============================================================*/
+     /*==============================================================
+    OBTENER SEMANAS
+==============================================================*/
 
-    obtenerSemanas(contexto) {
+obtenerSemanas(contexto) {
 
-        if (
-
-            Array.isArray(
-
-                contexto.semanas
-
-            )
-
-        ) {
-
-            return contexto.semanas;
-
-        }
-
-
-        if (
-
-            contexto.historial &&
-
-            Array.isArray(
-
-                contexto.historial.semanas
-
-            )
-
-        ) {
-
-            return contexto.historial.semanas;
-
-        }
-
-
-        if (
-
-            contexto.data &&
-
-            Array.isArray(
-
-                contexto.data.semanas
-
-            )
-
-        ) {
-
-            return contexto.data.semanas;
-
-        }
-
+    if (!contexto) {
 
         return [];
 
     }
 
+
+    if (
+        Array.isArray(
+            contexto.semanas
+        )
+    ) {
+
+        return contexto.semanas;
+
+    }
+
+
+    if (
+        Array.isArray(
+            contexto.historial
+        )
+    ) {
+
+        return contexto.historial;
+
+    }
+
+
+    if (
+        contexto.historial &&
+        Array.isArray(
+            contexto.historial.semanas
+        )
+    ) {
+
+        return contexto.historial.semanas;
+
+    }
+
+
+    if (
+        contexto.data &&
+        Array.isArray(
+            contexto.data.semanas
+        )
+    ) {
+
+        return contexto.data.semanas;
+
+    }
+
+
+    return [];
+
+}
 
     /*==============================================================
         ORDENAR SEMANAS

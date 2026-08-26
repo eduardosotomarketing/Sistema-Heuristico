@@ -6,7 +6,7 @@
  *
  * Entorno centralizado de pruebas.
  *
- * Motores integrados:
+ * Componentes integrados:
  *
  *   - BaseMotor
  *   - MotorFrecuencia
@@ -17,6 +17,10 @@
  *   - MotorParidad
  *   - MotorRangos
  *   - MotorDistribucion
+ *   - MotorAsociaciones
+ *   - MotorCiclos
+ *   - MotorManager
+ *   - MotorRanking
  *
  **********************************************************************/
 
@@ -30,6 +34,7 @@ import HistorialService
 
 import EstadisticasService
     from "./services/EstadisticasService.js";
+
 
 import BaseMotor
     from "./motores/BaseMotor.js";
@@ -57,6 +62,18 @@ import MotorRangos
 
 import MotorDistribucion
     from "./motores/MotorDistribucion.js";
+
+import MotorAsociaciones
+    from "./motores/MotorAsociaciones.js";
+
+import MotorCiclos
+    from "./motores/MotorCiclos.js";
+
+import MotorManager
+    from "./motores/MotorManager.js";
+
+import MotorRanking
+    from "./motores/MotorRanking.js";
 
 
 /*====================================================================
@@ -94,7 +111,7 @@ class EntornoPruebas {
 
 
         /*==========================================================
-            MOTORES
+            MOTORES INDIVIDUALES
         ==========================================================*/
 
         this.baseMotor = null;
@@ -114,6 +131,26 @@ class EntornoPruebas {
         this.motorRangos = null;
 
         this.motorDistribucion = null;
+
+        this.motorAsociaciones = null;
+
+        this.motorCiclos = null;
+
+
+        /*==========================================================
+            ORQUESTADORES
+        ==========================================================*/
+
+        this.motorManager = null;
+
+        this.motorRanking = null;
+
+
+        /*==========================================================
+            ÚLTIMO RANKING
+        ==========================================================*/
+
+        this.ultimoRanking = null;
 
     }
 
@@ -230,15 +267,9 @@ class EntornoPruebas {
                 new MotorFrecuencia();
 
 
-            this.motorFrecuencia.inicializar({
-
-                historial:
-                    this.datosHistorial,
-
-                estadisticas:
-                    this.obtenerArrayEstadisticas()
-
-            });
+            this.inicializarMotor(
+                this.motorFrecuencia
+            );
 
 
             console.log(
@@ -254,15 +285,9 @@ class EntornoPruebas {
                 new MotorAtraso();
 
 
-            this.motorAtraso.inicializar({
-
-                historial:
-                    this.datosHistorial,
-
-                estadisticas:
-                    this.obtenerArrayEstadisticas()
-
-            });
+            this.inicializarMotor(
+                this.motorAtraso
+            );
 
 
             console.log(
@@ -278,15 +303,9 @@ class EntornoPruebas {
                 new MotorTendencia();
 
 
-            this.motorTendencia.inicializar({
-
-                historial:
-                    this.datosHistorial,
-
-                estadisticas:
-                    this.obtenerArrayEstadisticas()
-
-            });
+            this.inicializarMotor(
+                this.motorTendencia
+            );
 
 
             console.log(
@@ -302,15 +321,9 @@ class EntornoPruebas {
                 new MotorRepeticion();
 
 
-            this.motorRepeticion.inicializar({
-
-                historial:
-                    this.datosHistorial,
-
-                estadisticas:
-                    this.obtenerArrayEstadisticas()
-
-            });
+            this.inicializarMotor(
+                this.motorRepeticion
+            );
 
 
             console.log(
@@ -326,15 +339,9 @@ class EntornoPruebas {
                 new MotorHistorico();
 
 
-            this.motorHistorico.inicializar({
-
-                historial:
-                    this.datosHistorial,
-
-                estadisticas:
-                    this.obtenerArrayEstadisticas()
-
-            });
+            this.inicializarMotor(
+                this.motorHistorico
+            );
 
 
             console.log(
@@ -350,15 +357,9 @@ class EntornoPruebas {
                 new MotorParidad();
 
 
-            this.motorParidad.inicializar({
-
-                historial:
-                    this.datosHistorial,
-
-                estadisticas:
-                    this.obtenerArrayEstadisticas()
-
-            });
+            this.inicializarMotor(
+                this.motorParidad
+            );
 
 
             console.log(
@@ -374,15 +375,9 @@ class EntornoPruebas {
                 new MotorRangos();
 
 
-            this.motorRangos.inicializar({
-
-                historial:
-                    this.datosHistorial,
-
-                estadisticas:
-                    this.obtenerArrayEstadisticas()
-
-            });
+            this.inicializarMotor(
+                this.motorRangos
+            );
 
 
             console.log(
@@ -398,15 +393,9 @@ class EntornoPruebas {
                 new MotorDistribucion();
 
 
-            this.motorDistribucion.inicializar({
-
-                historial:
-                    this.datosHistorial,
-
-                estadisticas:
-                    this.obtenerArrayEstadisticas()
-
-            });
+            this.inicializarMotor(
+                this.motorDistribucion
+            );
 
 
             console.log(
@@ -415,7 +404,82 @@ class EntornoPruebas {
 
 
             /*========================================================
-                FINALIZACIÓN
+                MOTOR ASOCIACIONES
+            ========================================================*/
+
+            this.motorAsociaciones =
+                new MotorAsociaciones();
+
+
+            this.inicializarMotor(
+                this.motorAsociaciones
+            );
+
+
+            console.log(
+                "MotorAsociaciones inicializado."
+            );
+
+
+            /*========================================================
+                MOTOR CICLOS
+            ========================================================*/
+
+            this.motorCiclos =
+                new MotorCiclos();
+
+
+            this.inicializarMotor(
+                this.motorCiclos
+            );
+
+
+            console.log(
+                "MotorCiclos inicializado."
+            );
+
+
+            /*========================================================
+                MOTOR MANAGER
+            ========================================================*/
+
+            this.motorManager =
+                new MotorManager();
+
+
+            this.motorManager.inicializar({
+
+                historial:
+                    this.datosHistorial,
+
+                estadisticas:
+                    this.obtenerArrayEstadisticas(),
+
+                configuracion: {}
+
+            });
+
+
+            console.log(
+                "MotorManager inicializado."
+            );
+
+
+            /*========================================================
+                MOTOR RANKING
+            ========================================================*/
+
+            this.motorRanking =
+                new MotorRanking();
+
+
+            console.log(
+                "MotorRanking inicializado."
+            );
+
+
+            /*========================================================
+                FINAL
             ========================================================*/
 
             this.inicializado = true;
@@ -452,6 +516,38 @@ class EntornoPruebas {
             throw error;
 
         }
+
+    }
+
+
+    /*================================================================
+        INICIALIZAR MOTOR INDIVIDUAL
+    ================================================================*/
+
+    inicializarMotor(
+        motor
+    ) {
+
+        if (
+            !motor ||
+            typeof motor.inicializar !==
+                "function"
+        ) {
+
+            return;
+
+        }
+
+
+        motor.inicializar({
+
+            historial:
+                this.datosHistorial,
+
+            estadisticas:
+                this.obtenerArrayEstadisticas()
+
+        });
 
     }
 
@@ -583,7 +679,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        MOTOR FRECUENCIA
+        FRECUENCIA
     ================================================================*/
 
     frecuencia(
@@ -592,6 +688,7 @@ class EntornoPruebas {
     ) {
 
         this.verificarInicializacion();
+
 
         return this.motorFrecuencia.calcular(
 
@@ -607,7 +704,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        MOTOR ATRASO
+        ATRASO
     ================================================================*/
 
     atraso(
@@ -616,6 +713,7 @@ class EntornoPruebas {
     ) {
 
         this.verificarInicializacion();
+
 
         return this.motorAtraso.calcular(
 
@@ -631,7 +729,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        MOTOR TENDENCIA
+        TENDENCIA
     ================================================================*/
 
     tendencia(
@@ -640,6 +738,7 @@ class EntornoPruebas {
     ) {
 
         this.verificarInicializacion();
+
 
         return this.motorTendencia.calcular(
 
@@ -655,7 +754,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        MOTOR REPETICIÓN
+        REPETICIÓN
     ================================================================*/
 
     repeticion(
@@ -664,6 +763,7 @@ class EntornoPruebas {
     ) {
 
         this.verificarInicializacion();
+
 
         return this.motorRepeticion.calcular(
 
@@ -679,7 +779,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        MOTOR HISTÓRICO
+        HISTÓRICO
     ================================================================*/
 
     historico(
@@ -688,6 +788,7 @@ class EntornoPruebas {
     ) {
 
         this.verificarInicializacion();
+
 
         return this.motorHistorico.calcular(
 
@@ -703,7 +804,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        MOTOR PARIDAD
+        PARIDAD
     ================================================================*/
 
     paridad(
@@ -712,6 +813,7 @@ class EntornoPruebas {
     ) {
 
         this.verificarInicializacion();
+
 
         return this.motorParidad.calcular(
 
@@ -727,7 +829,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        MOTOR RANGOS
+        RANGOS
     ================================================================*/
 
     rangos(
@@ -736,6 +838,7 @@ class EntornoPruebas {
     ) {
 
         this.verificarInicializacion();
+
 
         return this.motorRangos.calcular(
 
@@ -751,7 +854,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        MOTOR DISTRIBUCIÓN
+        DISTRIBUCIÓN
     ================================================================*/
 
     distribucion(
@@ -760,15 +863,6 @@ class EntornoPruebas {
     ) {
 
         this.verificarInicializacion();
-
-
-        if (!this.motorDistribucion) {
-
-            throw new Error(
-                "MotorDistribucion no está disponible."
-            );
-
-        }
 
 
         return this.motorDistribucion.calcular(
@@ -785,7 +879,299 @@ class EntornoPruebas {
 
 
     /*================================================================
-        ANALIZAR UN NÚMERO
+        ASOCIACIONES
+    ================================================================*/
+
+    asociaciones(
+        numero,
+        configuracion = {}
+    ) {
+
+        this.verificarInicializacion();
+
+
+        return this.motorAsociaciones.calcular(
+
+            numero,
+
+            this.crearContexto(
+                configuracion
+            )
+
+        );
+
+    }
+
+
+    /*================================================================
+        CICLOS
+    ================================================================*/
+
+    ciclos(
+        numero,
+        configuracion = {}
+    ) {
+
+        this.verificarInicializacion();
+
+
+        return this.motorCiclos.calcular(
+
+            numero,
+
+            this.crearContexto(
+                configuracion
+            )
+
+        );
+
+    }
+
+
+    /*================================================================
+        MANAGER
+    ================================================================*/
+
+    manager(
+        numero,
+        configuracion = {}
+    ) {
+
+        this.verificarInicializacion();
+
+
+        return this.motorManager
+            .analizarNumero(
+
+                numero,
+
+                configuracion
+
+            );
+
+    }
+
+
+    /*================================================================
+        MANAGER - TODOS
+    ================================================================*/
+
+    managerTodos(
+        configuracion = {}
+    ) {
+
+        this.verificarInicializacion();
+
+
+        return this.motorManager
+            .analizarTodos(
+                configuracion
+            );
+
+    }
+
+
+    /*================================================================
+        MANAGER - TOP PROVISIONAL
+    ================================================================*/
+
+    topManager(
+        cantidad = 20,
+        configuracion = {}
+    ) {
+
+        this.verificarInicializacion();
+
+
+        return this.motorManager
+            .obtenerTop(
+
+                cantidad,
+
+                configuracion
+
+            );
+
+    }
+
+
+    /*================================================================
+        GENERAR RANKING FINAL
+    ================================================================*/
+
+    generarRanking(
+        opciones = {},
+        configuracionManager = {}
+    ) {
+
+        this.verificarInicializacion();
+
+
+        /*
+         * Primero analizamos los 100 números.
+         */
+
+        const resultadosManager =
+            this.motorManager
+                .analizarTodos(
+                    configuracionManager
+                );
+
+
+        /*
+         * MotorRanking organiza esos resultados.
+         */
+
+        const ranking =
+            this.motorRanking.generar(
+
+                resultadosManager,
+
+                opciones
+
+            );
+
+
+        this.ultimoRanking =
+            ranking;
+
+
+        return ranking;
+
+    }
+
+
+    /*================================================================
+        OBTENER ÚLTIMO RANKING
+    ================================================================*/
+
+    ranking() {
+
+        this.verificarInicializacion();
+
+
+        if (!this.ultimoRanking) {
+
+            return this.generarRanking();
+
+        }
+
+
+        return this.ultimoRanking;
+
+    }
+
+
+    /*================================================================
+        TOP 10
+    ================================================================*/
+
+    top10() {
+
+        const ranking =
+            this.ranking();
+
+
+        return ranking.top10;
+
+    }
+
+
+    /*================================================================
+        TOP 20
+    ================================================================*/
+
+    top20() {
+
+        const ranking =
+            this.ranking();
+
+
+        return ranking.top20;
+
+    }
+
+
+    /*================================================================
+        EQUIPO TITULAR
+    ================================================================*/
+
+    titulares() {
+
+        const ranking =
+            this.ranking();
+
+
+        return ranking.equipoTitular;
+
+    }
+
+
+    /*================================================================
+        EQUIPO SUPLENTE
+    ================================================================*/
+
+    suplentes() {
+
+        const ranking =
+            this.ranking();
+
+
+        return ranking.equipoSuplente;
+
+    }
+
+
+    /*================================================================
+        PREPARAR PREDICCIÓN
+    ================================================================*/
+
+    prepararPrediccion(
+        datosSemana = {}
+    ) {
+
+        const ranking =
+            this.ranking();
+
+
+        return this.motorRanking
+            .prepararPrediccion(
+
+                ranking,
+
+                datosSemana
+
+            );
+
+    }
+
+
+    /*================================================================
+        EVALUAR PREDICCIÓN
+    ================================================================*/
+
+    evaluarPrediccion(
+        prediccion,
+        numerosReales
+    ) {
+
+        this.verificarInicializacion();
+
+
+        return this.motorRanking
+            .evaluarPrediccion(
+
+                prediccion,
+
+                numerosReales
+
+            );
+
+    }
+
+
+    /*================================================================
+        ANALIZAR NÚMERO COMPLETO
     ================================================================*/
 
     analizarNumero(numero) {
@@ -820,7 +1206,16 @@ class EntornoPruebas {
                 this.rangos(numero),
 
             distribucion:
-                this.distribucion(numero)
+                this.distribucion(numero),
+
+            asociaciones:
+                this.asociaciones(numero),
+
+            ciclos:
+                this.ciclos(numero),
+
+            manager:
+                this.manager(numero)
 
         };
 
@@ -828,7 +1223,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        INFORMACIÓN
+        INFORMACIÓN DEL SISTEMA
     ================================================================*/
 
     informacion() {
@@ -849,49 +1244,114 @@ class EntornoPruebas {
                     .length,
 
             baseMotor:
-                this.baseMotor
-                    ? this.baseMotor.obtenerInformacion()
-                    : null,
+                this.obtenerInformacionMotor(
+                    this.baseMotor
+                ),
 
             motorFrecuencia:
-                this.motorFrecuencia
-                    ? this.motorFrecuencia.obtenerInformacion()
-                    : null,
+                this.obtenerInformacionMotor(
+                    this.motorFrecuencia
+                ),
 
             motorAtraso:
-                this.motorAtraso
-                    ? this.motorAtraso.obtenerInformacion()
-                    : null,
+                this.obtenerInformacionMotor(
+                    this.motorAtraso
+                ),
 
             motorTendencia:
-                this.motorTendencia
-                    ? this.motorTendencia.obtenerInformacion()
-                    : null,
+                this.obtenerInformacionMotor(
+                    this.motorTendencia
+                ),
 
             motorRepeticion:
-                this.motorRepeticion
-                    ? this.motorRepeticion.obtenerInformacion()
-                    : null,
+                this.obtenerInformacionMotor(
+                    this.motorRepeticion
+                ),
 
             motorHistorico:
-                this.motorHistorico
-                    ? this.motorHistorico.obtenerInformacion()
-                    : null,
+                this.obtenerInformacionMotor(
+                    this.motorHistorico
+                ),
 
             motorParidad:
-                this.motorParidad
-                    ? this.motorParidad.obtenerInformacion()
-                    : null,
+                this.obtenerInformacionMotor(
+                    this.motorParidad
+                ),
 
             motorRangos:
-                this.motorRangos
-                    ? this.motorRangos.obtenerInformacion()
-                    : null,
+                this.obtenerInformacionMotor(
+                    this.motorRangos
+                ),
 
             motorDistribucion:
-                this.motorDistribucion
-                    ? this.motorDistribucion.obtenerInformacion()
-                    : null
+                this.obtenerInformacionMotor(
+                    this.motorDistribucion
+                ),
+
+            motorAsociaciones:
+                this.obtenerInformacionMotor(
+                    this.motorAsociaciones
+                ),
+
+            motorCiclos:
+                this.obtenerInformacionMotor(
+                    this.motorCiclos
+                ),
+
+            motorManager:
+                this.motorManager
+                    ? this.motorManager
+                        .obtenerInformacion()
+                    : null,
+
+            motorRanking:
+                this.motorRanking
+                    ? this.motorRanking
+                        .obtenerEstado()
+                    : null,
+
+            rankingGenerado:
+                this.ultimoRanking !==
+                null
+
+        };
+
+    }
+
+
+    /*================================================================
+        INFORMACIÓN MOTOR
+    ================================================================*/
+
+    obtenerInformacionMotor(
+        motor
+    ) {
+
+        if (!motor) {
+
+            return null;
+
+        }
+
+
+        if (
+            typeof motor.obtenerInformacion ===
+            "function"
+        ) {
+
+            return motor
+                .obtenerInformacion();
+
+        }
+
+
+        return {
+
+            nombre:
+                motor.nombre ?? null,
+
+            version:
+                motor.version ?? null
 
         };
 
@@ -935,12 +1395,16 @@ class EntornoPruebas {
 
 
                 if (
-                    Number.isInteger(valor) &&
+                    Number.isInteger(
+                        valor
+                    ) &&
                     valor >= 0 &&
                     valor <= 99
                 ) {
 
-                    numeros.add(valor);
+                    numeros.add(
+                        valor
+                    );
 
                 }
 
@@ -965,7 +1429,12 @@ class EntornoPruebas {
         );
 
 
-        this.inicializado = false;
+        this.inicializado =
+            false;
+
+
+        this.ultimoRanking =
+            null;
 
 
         return await this.inicializar();
@@ -974,196 +1443,565 @@ class EntornoPruebas {
 
 
     /*================================================================
-        EJECUTAR TODOS
+        TABLA MANAGER - UN NÚMERO
     ================================================================*/
 
-    ejecutarTodos(funcion) {
-
-        this.verificarInicializacion();
-
-
-        const resultados = [];
-
-
-        for (
-            let numero = 0;
-            numero <= 99;
-            numero++
-        ) {
-
-            resultados.push(
-                funcion(numero)
-            );
-
-        }
-
-
-        return resultados;
-
-    }
-
-
-    /*================================================================
-        TODOS
-    ================================================================*/
-
-    frecuenciaTodos() {
-
-        return this.ejecutarTodos(
-            numero =>
-                this.frecuencia(numero)
-        );
-
-    }
-
-
-    atrasoTodos() {
-
-        return this.ejecutarTodos(
-            numero =>
-                this.atraso(numero)
-        );
-
-    }
-
-
-    tendenciaTodos() {
-
-        return this.ejecutarTodos(
-            numero =>
-                this.tendencia(numero)
-        );
-
-    }
-
-
-    repeticionTodos() {
-
-        return this.ejecutarTodos(
-            numero =>
-                this.repeticion(numero)
-        );
-
-    }
-
-
-    historicoTodos() {
-
-        return this.ejecutarTodos(
-            numero =>
-                this.historico(numero)
-        );
-
-    }
-
-
-    paridadTodos() {
-
-        return this.ejecutarTodos(
-            numero =>
-                this.paridad(numero)
-        );
-
-    }
-
-
-    rangosTodos() {
-
-        return this.ejecutarTodos(
-            numero =>
-                this.rangos(numero)
-        );
-
-    }
-
-
-    distribucionTodos() {
-
-        return this.ejecutarTodos(
-            numero =>
-                this.distribucion(numero)
-        );
-
-    }
-
-
-    /*================================================================
-        TABLA DISTRIBUCIÓN
-    ================================================================*/
-
-    tablaDistribucion(
-        desde = 0,
-        hasta = 99
+    tablaManager(
+        numero
     ) {
 
-        this.verificarInicializacion();
-
-
-        const resultados = [];
-
-
-        for (
-            let numero = desde;
-            numero <= hasta;
-            numero++
-        ) {
-
-            const resultado =
-                this.distribucion(numero);
-
-
-            resultados.push({
-
-                numero:
-                    resultado.numero,
-
-                texto:
-                    resultado.numeroTexto,
-
-                rango:
-                    resultado.indicadores.rango,
-
-                decena:
-                    resultado.indicadores.decena,
-
-                terminacion:
-                    resultado.indicadores.terminacion,
-
-                paridad:
-                    resultado.indicadores.paridad,
-
-                frecuenciaNumero:
-                    resultado.indicadores.frecuenciaNumero,
-
-                frecuenciaRango:
-                    resultado.indicadores.frecuenciaRango,
-
-                frecuenciaTerminacion:
-                    resultado.indicadores.frecuenciaTerminacion,
-
-                frecuenciaParidad:
-                    resultado.indicadores.frecuenciaParidad,
-
-                frecuenciaReciente:
-                    resultado.indicadores.frecuenciaReciente,
-
-                score:
-                    resultado.score,
-
-                confianza:
-                    resultado.confianza
-
-            });
-
-        }
+        const resultado =
+            this.manager(
+                numero
+            );
 
 
         console.table(
-            resultados
+            resultado.detallePesos
         );
 
 
-        return resultados;
+        return resultado;
+
+    }
+
+
+    /*================================================================
+        TABLA TOP MANAGER
+    ================================================================*/
+
+    tablaTopManager(
+        cantidad = 20
+    ) {
+
+        const top =
+            this.topManager(
+                cantidad
+            );
+
+
+        const tabla =
+            top.map(
+
+                (
+                    item,
+                    indice
+                ) => ({
+
+                    posicion:
+                        indice + 1,
+
+                    numero:
+                        item.numeroTexto,
+
+                    score:
+                        item.score,
+
+                    confianza:
+                        item.confianza,
+
+                    pesoTotal:
+                        item.pesoTotal,
+
+                    motores:
+                        item.motoresUtilizados
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA RANKING FINAL
+    ================================================================*/
+
+    tablaRanking(
+        cantidad = 100
+    ) {
+
+        const ranking =
+            this.ranking();
+
+
+        const limite =
+            Math.max(
+
+                1,
+
+                Math.min(
+                    Number(cantidad) || 100,
+                    ranking.ranking.length
+                )
+
+            );
+
+
+        const tabla =
+            ranking.ranking
+                .slice(
+                    0,
+                    limite
+                )
+                .map(
+
+                    item => ({
+
+                        orden:
+                            item.orden,
+
+                        posicion:
+                            item.posicion,
+
+                        numero:
+                            item.numeroTexto,
+
+                        score:
+                            item.score,
+
+                        confianza:
+                            item.confianza,
+
+                        percentil:
+                            item.percentil,
+
+                        categoria:
+                            item.categoria,
+
+                        empate:
+                            item.empate,
+
+                        diferenciaPromedio:
+                            item.diferenciaPromedio,
+
+                        motores:
+                            item.cantidadMotores
+
+                    })
+
+                );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA TOP 10 RANKING
+    ================================================================*/
+
+    tablaTop10() {
+
+        const top =
+            this.top10();
+
+
+        const tabla =
+            top.map(
+
+                item => ({
+
+                    orden:
+                        item.orden,
+
+                    posicion:
+                        item.posicion,
+
+                    numero:
+                        item.numeroTexto,
+
+                    score:
+                        item.score,
+
+                    confianza:
+                        item.confianza,
+
+                    percentil:
+                        item.percentil,
+
+                    categoria:
+                        item.categoria,
+
+                    empate:
+                        item.empate
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA TOP 20 RANKING
+    ================================================================*/
+
+    tablaTop20() {
+
+        const top =
+            this.top20();
+
+
+        const tabla =
+            top.map(
+
+                item => ({
+
+                    orden:
+                        item.orden,
+
+                    posicion:
+                        item.posicion,
+
+                    numero:
+                        item.numeroTexto,
+
+                    score:
+                        item.score,
+
+                    confianza:
+                        item.confianza,
+
+                    percentil:
+                        item.percentil,
+
+                    categoria:
+                        item.categoria,
+
+                    empate:
+                        item.empate
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA EQUIPO TITULAR
+    ================================================================*/
+
+    tablaTitulares() {
+
+        const lista =
+            this.titulares();
+
+
+        const tabla =
+            lista.map(
+
+                item => ({
+
+                    posicion:
+                        item.posicion,
+
+                    numero:
+                        item.numeroTexto,
+
+                    score:
+                        item.score,
+
+                    confianza:
+                        item.confianza,
+
+                    categoria:
+                        item.categoria
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA EQUIPO SUPLENTE
+    ================================================================*/
+
+    tablaSuplentes() {
+
+        const lista =
+            this.suplentes();
+
+
+        const tabla =
+            lista.map(
+
+                item => ({
+
+                    posicion:
+                        item.posicion,
+
+                    numero:
+                        item.numeroTexto,
+
+                    score:
+                        item.score,
+
+                    confianza:
+                        item.confianza,
+
+                    categoria:
+                        item.categoria
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA ESTADÍSTICAS RANKING
+    ================================================================*/
+
+    tablaEstadisticasRanking() {
+
+        const ranking =
+            this.ranking();
+
+
+        console.table(
+            ranking.estadisticas
+        );
+
+
+        return ranking.estadisticas;
+
+    }
+
+
+    /*================================================================
+        TABLA DISTRIBUCIÓN DEL RANKING
+    ================================================================*/
+
+    tablaDistribucionRanking() {
+
+        const ranking =
+            this.ranking();
+
+
+        const tabla =
+            Object.entries(
+                ranking.distribucion
+            ).map(
+
+                (
+                    [
+                        rango,
+                        datos
+                    ]
+                ) => ({
+
+                    rango,
+
+                    cantidad:
+                        datos.cantidad,
+
+                    scorePromedio:
+                        datos.scorePromedio,
+
+                    confianzaPromedio:
+                        datos.confianzaPromedio,
+
+                    mejorPosicion:
+                        datos.mejorPosicion
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        DETALLE DE UN NÚMERO EN EL RANKING
+    ================================================================*/
+
+    detalleRanking(
+        numero
+    ) {
+
+        const ranking =
+            this.ranking();
+
+
+        const valor =
+            Number(
+                numero
+            );
+
+
+        const item =
+            ranking.ranking.find(
+
+                candidato =>
+                    candidato.numero ===
+                    valor
+
+            );
+
+
+        if (!item) {
+
+            console.warn(
+                "Número no encontrado en el ranking:",
+                numero
+            );
+
+            return null;
+
+        }
+
+
+        console.log(
+            item
+        );
+
+
+        console.table(
+
+            Object.entries(
+                item.resumenMotores ||
+                {}
+            ).map(
+
+                (
+                    [
+                        clave,
+                        datos
+                    ]
+                ) => ({
+
+                    motor:
+                        clave,
+
+                    score:
+                        datos.score,
+
+                    confianza:
+                        datos.confianza,
+
+                    peso:
+                        datos.peso,
+
+                    evidencia:
+                        datos.evidencia
+
+                })
+
+            )
+
+        );
+
+
+        return item;
+
+    }
+
+
+    /*================================================================
+        COMPROBAR EMPATES
+    ================================================================*/
+
+    tablaEmpates() {
+
+        const ranking =
+            this.ranking();
+
+
+        const empatados =
+            ranking.ranking
+                .filter(
+                    item =>
+                        item.empate
+                )
+                .map(
+
+                    item => ({
+
+                        orden:
+                            item.orden,
+
+                        posicion:
+                            item.posicion,
+
+                        numero:
+                            item.numeroTexto,
+
+                        score:
+                            item.score,
+
+                        confianza:
+                            item.confianza
+
+                    })
+
+                );
+
+
+        console.table(
+            empatados
+        );
+
+
+        return empatados;
 
     }
 
@@ -1172,7 +2010,9 @@ class EntornoPruebas {
         TABLA GENERAL DE UN NÚMERO
     ================================================================*/
 
-    tablaNumero(numero) {
+    tablaNumero(
+        numero
+    ) {
 
         const resultado =
             this.analizarNumero(
@@ -1183,59 +2023,157 @@ class EntornoPruebas {
         const tabla = [
 
             {
-                motor: "Frecuencia",
-                score: resultado.frecuencia.score,
-                confianza: resultado.frecuencia.confianza,
-                peso: resultado.frecuencia.peso
+                motor:
+                    "Frecuencia",
+
+                score:
+                    resultado.frecuencia.score,
+
+                confianza:
+                    resultado.frecuencia.confianza,
+
+                peso:
+                    resultado.frecuencia.peso
             },
 
             {
-                motor: "Atraso",
-                score: resultado.atraso.score,
-                confianza: resultado.atraso.confianza,
-                peso: resultado.atraso.peso
+                motor:
+                    "Atraso",
+
+                score:
+                    resultado.atraso.score,
+
+                confianza:
+                    resultado.atraso.confianza,
+
+                peso:
+                    resultado.atraso.peso
             },
 
             {
-                motor: "Tendencia",
-                score: resultado.tendencia.score,
-                confianza: resultado.tendencia.confianza,
-                peso: resultado.tendencia.peso
+                motor:
+                    "Tendencia",
+
+                score:
+                    resultado.tendencia.score,
+
+                confianza:
+                    resultado.tendencia.confianza,
+
+                peso:
+                    resultado.tendencia.peso
             },
 
             {
-                motor: "Repeticion",
-                score: resultado.repeticion.score,
-                confianza: resultado.repeticion.confianza,
-                peso: resultado.repeticion.peso
+                motor:
+                    "Repeticion",
+
+                score:
+                    resultado.repeticion.score,
+
+                confianza:
+                    resultado.repeticion.confianza,
+
+                peso:
+                    resultado.repeticion.peso
             },
 
             {
-                motor: "Historico",
-                score: resultado.historico.score,
-                confianza: resultado.historico.confianza,
-                peso: resultado.historico.peso
+                motor:
+                    "Historico",
+
+                score:
+                    resultado.historico.score,
+
+                confianza:
+                    resultado.historico.confianza,
+
+                peso:
+                    resultado.historico.peso
             },
 
             {
-                motor: "Paridad",
-                score: resultado.paridad.score,
-                confianza: resultado.paridad.confianza,
-                peso: resultado.paridad.peso
+                motor:
+                    "Paridad",
+
+                score:
+                    resultado.paridad.score,
+
+                confianza:
+                    resultado.paridad.confianza,
+
+                peso:
+                    resultado.paridad.peso
             },
 
             {
-                motor: "Rangos",
-                score: resultado.rangos.score,
-                confianza: resultado.rangos.confianza,
-                peso: resultado.rangos.peso
+                motor:
+                    "Rangos",
+
+                score:
+                    resultado.rangos.score,
+
+                confianza:
+                    resultado.rangos.confianza,
+
+                peso:
+                    resultado.rangos.peso
             },
 
             {
-                motor: "Distribucion",
-                score: resultado.distribucion.score,
-                confianza: resultado.distribucion.confianza,
-                peso: resultado.distribucion.peso
+                motor:
+                    "Distribucion",
+
+                score:
+                    resultado.distribucion.score,
+
+                confianza:
+                    resultado.distribucion.confianza,
+
+                peso:
+                    resultado.distribucion.peso
+            },
+
+            {
+                motor:
+                    "Asociaciones",
+
+                score:
+                    resultado.asociaciones.score,
+
+                confianza:
+                    resultado.asociaciones.confianza,
+
+                peso:
+                    resultado.asociaciones.peso
+            },
+
+            {
+                motor:
+                    "Ciclos",
+
+                score:
+                    resultado.ciclos.score,
+
+                confianza:
+                    resultado.ciclos.confianza,
+
+                peso:
+                    resultado.ciclos.peso
+            },
+
+            {
+                motor:
+                    "MANAGER",
+
+                score:
+                    resultado.manager.score,
+
+                confianza:
+                    resultado.manager.confianza,
+
+                peso:
+                    resultado.manager.pesoTotal
             }
 
         ];

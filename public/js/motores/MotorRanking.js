@@ -1,4 +1,3 @@
-
 /**********************************************************************
  * SISTEMA HEURÍSTICO EVOLUTIVO
  *
@@ -6,115 +5,96 @@
  * js/motores/MotorRanking.js
  *
  * Propósito:
- * Construir el ranking final de números 00-99 a partir de los
- * resultados obtenidos por MotorManager.
+ *
+ * Construir el ranking final de los números 00-99
+ * utilizando los resultados producidos por MotorManager.
  *
  * Responsabilidades:
  *
- *   - Recibir resultados de MotorManager.
- *   - Ordenar 00-99 por score.
- *   - Resolver empates.
- *   - Generar Top 10.
- *   - Generar Top 20.
- *   - Generar Equipo Titular.
- *   - Generar Equipo Suplente.
- *   - Conservar información de los motores.
- *   - Generar una estructura preparada para la autoevaluación.
+ * - Recibir análisis de MotorManager
+ * - Normalizar resultados
+ * - Ordenar candidatos
+ * - Reconocer empates reales
+ * - Asignar posiciones
+ * - Calcular percentiles
+ * - Clasificar candidatos
+ * - Generar TOP 10 / TOP 20
+ * - Generar equipo titular / suplente
+ * - Preparar predicciones
+ * - Evaluar predicciones históricas
+ * - Preparar información para futura autoevaluación
  *
  * IMPORTANTE:
  *
- * MotorRanking NO modifica los resultados individuales de los motores.
- *
- * Solamente los organiza y genera una capa superior de información.
+ * El ranking es heurístico.
+ * NO representa probabilidad matemática de aparición.
  *
  **********************************************************************/
+
 
 export default class MotorRanking {
 
 
+    /*================================================================
+        CONSTRUCTOR
+    ================================================================*/
+
     constructor(configuracion = {}) {
 
         this.nombre =
-
             "MotorRanking";
 
-
         this.version =
+            "2.0.0";
 
-            "1.0.0";
-
-
-        /*
-         * Configuración del ranking.
-         */
 
         this.configuracion = {
 
             top10:
-
-                configuracion.top10 ||
-
-                10,
+                Number(configuracion.top10) || 10,
 
             top20:
-
-                configuracion.top20 ||
-
-                20,
+                Number(configuracion.top20) || 20,
 
             titulares:
-
-                configuracion.titulares ||
-
-                10,
+                Number(configuracion.titulares) || 10,
 
             suplentes:
+                Number(configuracion.suplentes) || 10,
 
-                configuracion.suplentes ||
-
-                10
+            toleranciaEmpate:
+                Number.isFinite(
+                    Number(
+                        configuracion.toleranciaEmpate
+                    )
+                )
+                    ? Number(
+                        configuracion.toleranciaEmpate
+                    )
+                    : 0.0001
 
         };
 
     }
 
 
-    /*==============================================================
-        MÉTODO PRINCIPAL
-    ==============================================================*/
+    /*================================================================
+        GENERAR RANKING
+    ================================================================*/
 
     generar(
-
         resultados,
-
         opciones = {}
-
     ) {
 
-        /*
-         * Aceptamos tanto:
-         *
-         *   MotorManager.analizarTodos()
-         *
-         * como:
-         *
-         *   MotorManager.generarRanking()
-         *
-         */
-
         const lista =
-
             this.extraerLista(
-
                 resultados
-
             );
 
 
         if (
-
             lista.length === 0
-
         ) {
 
             return this.resultadoVacio();
@@ -123,20 +103,16 @@ export default class MotorRanking {
 
 
         /*
-         * Normalizamos los resultados.
-
+         * Normalizamos resultados provenientes
+         * de MotorManager.
          */
 
         const candidatos =
-
             lista.map(
 
                 resultado =>
-
                     this.normalizarResultado(
-
                         resultado
-
                     )
 
             );
@@ -144,151 +120,198 @@ export default class MotorRanking {
 
         /*
          * Ordenamos.
-
          */
 
         const ranking =
-
             this.ordenarRanking(
-
                 candidatos
-
             );
 
 
         /*
-         * Asignamos posiciones.
-
+         * Posiciones con reconocimiento
+         * de empates reales.
          */
 
         this.asignarPosiciones(
-
             ranking
-
         );
 
 
         /*
-         * Generamos los diferentes grupos.
-
+         * Percentiles.
          */
 
+        this.asignarPercentiles(
+            ranking
+        );
+
+
+        /*
+         * Categorías.
+         */
+
+        this.asignarCategorias(
+            ranking
+        );
+
+
+        /*
+         * Diferencias respecto del promedio.
+         */
+
+        const promedio =
+            this.promedio(
+
+                ranking.map(
+                    item =>
+                        item.score
+                )
+
+            );
+
+
+        ranking.forEach(
+            item => {
+
+                item.diferenciaPromedio =
+                    this.redondear(
+
+                        item.score -
+                        promedio,
+
+                        4
+
+                    );
+
+            }
+        );
+
+
+        /*------------------------------------------------------------
+            CONFIGURACIÓN
+        ------------------------------------------------------------*/
+
+        const cantidadTop10 =
+            this.normalizarCantidad(
+
+                opciones.top10 ??
+                this.configuracion.top10,
+
+                10
+
+            );
+
+
+        const cantidadTop20 =
+            this.normalizarCantidad(
+
+                opciones.top20 ??
+                this.configuracion.top20,
+
+                20
+
+            );
+
+
+        const cantidadTitulares =
+            this.normalizarCantidad(
+
+                opciones.titulares ??
+                this.configuracion.titulares,
+
+                10
+
+            );
+
+
+        const cantidadSuplentes =
+            this.normalizarCantidad(
+
+                opciones.suplentes ??
+                this.configuracion.suplentes,
+
+                10
+
+            );
+
+
+        /*------------------------------------------------------------
+            GRUPOS
+        ------------------------------------------------------------*/
+
         const top10 =
-
             ranking.slice(
-
                 0,
-
-                opciones.top10 ||
-
-                this.configuracion.top10
-
+                cantidadTop10
             );
 
 
         const top20 =
-
             ranking.slice(
-
                 0,
-
-                opciones.top20 ||
-
-                this.configuracion.top20
-
+                cantidadTop20
             );
 
 
         const titulares =
-
             ranking.slice(
-
                 0,
-
-                opciones.titulares ||
-
-                this.configuracion.titulares
-
+                cantidadTitulares
             );
 
 
         const inicioSuplentes =
 
             opciones.inicioSuplentes !==
-
                 undefined
 
-                ? Number(
-
-                    opciones.inicioSuplentes
-
+                ? Math.max(
+                    0,
+                    Number(
+                        opciones.inicioSuplentes
+                    ) || 0
                 )
 
-                : (
-
-                    opciones.titulares ||
-
-                    this.configuracion.titulares
-
-                );
+                : cantidadTitulares;
 
 
         const suplentes =
-
             ranking.slice(
 
                 inicioSuplentes,
 
                 inicioSuplentes +
-
-                (
-
-                    opciones.suplentes ||
-
-                    this.configuracion.suplentes
-
-                )
+                cantidadSuplentes
 
             );
 
 
-        /*
-         * Distribución del ranking.
-
-         */
+        /*------------------------------------------------------------
+            DISTRIBUCIÓN
+        ------------------------------------------------------------*/
 
         const distribucion =
-
             this.calcularDistribucion(
-
                 ranking
-
             );
 
 
-        /*
-         * Estadísticas generales.
-
-         */
+        /*------------------------------------------------------------
+            ESTADÍSTICAS
+        ------------------------------------------------------------*/
 
         const estadisticas =
-
             this.calcularEstadisticas(
-
                 ranking
-
             );
 
 
-        /*
-         * Generamos una versión resumida
-         * especialmente útil para exportar
-         * a una IA posteriormente.
-
-         */
+        /*------------------------------------------------------------
+            RESUMEN IA
+        ------------------------------------------------------------*/
 
         const resumenIA =
-
             this.generarResumenIA(
 
                 ranking,
@@ -306,31 +329,26 @@ export default class MotorRanking {
             );
 
 
-        /*
-         * Identificador temporal del ranking.
-         */
-
         const idRanking =
-
             this.generarIdRanking();
 
 
         return {
 
             id:
-
                 idRanking,
 
-            version:
+            nombre:
+                this.nombre,
 
+            version:
                 this.version,
 
             generadoEn:
-
-                new Date().toISOString(),
+                new Date()
+                    .toISOString(),
 
             totalNumeros:
-
                 ranking.length,
 
             ranking,
@@ -340,11 +358,9 @@ export default class MotorRanking {
             top20,
 
             equipoTitular:
-
                 titulares,
 
             equipoSuplente:
-
                 suplentes,
 
             distribucion,
@@ -358,24 +374,23 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
+    /*================================================================
         EXTRAER LISTA
-    ==============================================================*/
+    ================================================================*/
 
     extraerLista(
-
         resultados
-
     ) {
 
+        /*
+         * MotorManager.analizarTodos()
+         * devuelve directamente un array.
+         */
+
         if (
-
             Array.isArray(
-
                 resultados
-
             )
-
         ) {
 
             return resultados;
@@ -384,21 +399,18 @@ export default class MotorRanking {
 
 
         /*
-         * Resultado proveniente de
-         * MotorManager.analizarTodos()
-
+         * Formato:
+         *
+         * {
+         *     resultados: [...]
+         * }
          */
 
         if (
-
             resultados &&
-
             Array.isArray(
-
                 resultados.resultados
-
             )
-
         ) {
 
             return resultados.resultados;
@@ -407,21 +419,14 @@ export default class MotorRanking {
 
 
         /*
-         * Resultado proveniente de
-         * MotorManager.generarRanking()
-
+         * Ranking previamente generado.
          */
 
         if (
-
             resultados &&
-
             Array.isArray(
-
                 resultados.ranking
-
             )
-
         ) {
 
             return resultados.ranking;
@@ -434,149 +439,107 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
+    /*================================================================
         NORMALIZAR RESULTADO
-    ==============================================================*/
+    ================================================================*/
 
     normalizarResultado(
-
         resultado
-
     ) {
 
-        /*
-         * MotorManager puede devolver:
-         *
-         * {
-         *    numero,
-         *    motores,
-         *    combinado
-         * }
-         *
-         * o un objeto de ranking ya procesado.
-         */
+        if (!resultado) {
+
+            throw new Error(
+                "MotorRanking: resultado inválido."
+            );
+
+        }
+
 
         const numero =
-
             this.normalizarNumero(
-
                 resultado.numero
+            );
+
+
+        /*------------------------------------------------------------
+            SCORE
+        ------------------------------------------------------------*/
+
+        const score =
+            this.limitar(
+
+                this.numeroSeguro(
+                    resultado.score
+                ),
+
+                0,
+
+                100
 
             );
 
 
-        let score = 0;
+        /*------------------------------------------------------------
+            CONFIANZA
+        ------------------------------------------------------------*/
 
-        let confianza = 0;
-
-        let cantidadMotores = 0;
-
-        let motores = {};
-
-
-        if (
-
-            resultado.combinado
-
-        ) {
-
-            score =
+        const confianza =
+            this.limitar(
 
                 this.numeroSeguro(
-
-                    resultado
-
-                        .combinado
-
-                        .score
-
-                );
-
-
-            confianza =
-
-                this.numeroSeguro(
-
-                    resultado
-
-                        .combinado
-
-                        .confianza
-
-                );
-
-
-            cantidadMotores =
-
-                this.numeroSeguro(
-
-                    resultado
-
-                        .combinado
-
-                        .cantidadMotores
-
-                );
-
-
-            motores =
-
-                resultado.motores ||
-
-                {};
-
-        }
-
-        else {
-
-            score =
-
-                this.numeroSeguro(
-
-                    resultado.score
-
-                );
-
-
-            confianza =
-
-                this.numeroSeguro(
-
                     resultado.confianza
+                ),
 
-                );
+                0,
 
+                100
 
-            cantidadMotores =
-
-                this.numeroSeguro(
-
-                    resultado.cantidadMotores
-
-                );
+            );
 
 
-            motores =
+        /*------------------------------------------------------------
+            CANTIDAD DE MOTORES
+        ------------------------------------------------------------*/
 
-                resultado.motores ||
+        const cantidadMotores =
+            this.numeroSeguro(
 
-                {};
+                resultado.motoresUtilizados ??
 
-        }
+                resultado.cantidadMotores ??
+
+                0
+
+            );
 
 
-        /*
-         * Obtenemos información resumida
-         * de los motores.
+        const motoresDisponibles =
+            this.numeroSeguro(
 
-         */
+                resultado.motoresDisponibles ??
+
+                cantidadMotores
+
+            );
+
+
+        /*------------------------------------------------------------
+            RESULTADOS DE MOTORES
+        ------------------------------------------------------------*/
+
+        const motores =
+
+            resultado.resultados ??
+
+            resultado.motores ??
+
+            {};
+
 
         const resumenMotores =
-
             this.resumirMotores(
-
                 motores
-
             );
 
 
@@ -585,28 +548,40 @@ export default class MotorRanking {
             numero,
 
             numeroTexto:
-
                 this.formatearNumero(
-
                     numero
-
                 ),
 
             score:
+                this.redondear(
+                    score,
+                    6
+                ),
 
+            scoreBruto:
                 this.redondear(
 
-                    score,
+                    this.numeroSeguro(
+                        resultado.scoreBruto,
+                        score
+                    ),
 
                     6
 
                 ),
 
             confianza:
+                this.redondear(
+                    confianza,
+                    6
+                ),
 
+            pesoTotal:
                 this.redondear(
 
-                    confianza,
+                    this.numeroSeguro(
+                        resultado.pesoTotal
+                    ),
 
                     6
 
@@ -614,53 +589,73 @@ export default class MotorRanking {
 
             cantidadMotores,
 
+            motoresDisponibles,
+
             motores,
 
-            resumenMotores
+            resumenMotores,
+
+            detallePesos:
+                Array.isArray(
+                    resultado.detallePesos
+                )
+                    ? resultado.detallePesos
+                    : [],
+
+            origenCreado:
+                resultado.creado || null,
+
+            posicion:
+                null,
+
+            orden:
+                null,
+
+            percentil:
+                0,
+
+            categoria:
+                null,
+
+            empate:
+                false,
+
+            diferenciaPromedio:
+                0
 
         };
 
     }
 
 
-    /*==============================================================
+    /*================================================================
         RESUMIR MOTORES
-    ==============================================================*/
+    ================================================================*/
 
     resumirMotores(
-
         motores
-
     ) {
 
         const resumen = {};
 
 
-        if (!motores) {
+        if (
+            !motores ||
+            typeof motores !==
+                "object"
+        ) {
 
             return resumen;
 
         }
 
 
-        /*
-         * Puede ser un objeto:
-         *
-         * {
-         *    historico: MotorResult,
-         *    frecuencia: MotorResult,
-         *    ...
-         * }
-         */
-
         for (
-
-            const clave in motores
-
+            const clave
+            in motores
         ) {
 
             const resultado =
-
                 motores[clave];
 
 
@@ -673,40 +668,53 @@ export default class MotorRanking {
 
             resumen[clave] = {
 
+                motor:
+                    resultado.motor ??
+                    clave,
+
                 score:
+                    this.redondear(
 
-                    this.numeroSeguro(
+                        this.numeroSeguro(
+                            resultado.score
+                        ),
 
-                        resultado.score
+                        4
 
                     ),
 
                 confianza:
+                    this.redondear(
 
-                    this.numeroSeguro(
+                        this.numeroSeguro(
+                            resultado.confianza
+                        ),
 
-                        resultado.confianza
+                        4
 
                     ),
 
                 peso:
+                    this.redondear(
 
-                    this.numeroSeguro(
+                        this.numeroSeguro(
+                            resultado.peso
+                        ),
 
-                        resultado.peso
+                        4
 
                     ),
 
+                evidencia:
+                    resultado.evidencia ??
+                    null,
+
                 indicadores:
-
-                    resultado.indicadores ||
-
+                    resultado.indicadores ??
                     {},
 
                 detalle:
-
-                    resultado.detalle ||
-
+                    resultado.detalle ??
                     {}
 
             };
@@ -719,105 +727,86 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
+    /*================================================================
         ORDENAR RANKING
-    ==============================================================*/
+    ================================================================*/
 
     ordenarRanking(
-
         candidatos
-
     ) {
 
         return [
-
             ...candidatos
-
         ].sort(
 
             (a, b) => {
 
                 /*
-                 * 1. Score combinado.
+                 * 1. Score global.
                  */
 
                 if (
-
-                    b.score !==
-
-                    a.score
-
+                    !this.sonIguales(
+                        a.score,
+                        b.score
+                    )
                 ) {
 
                     return (
-
                         b.score -
-
                         a.score
-
                     );
 
                 }
 
 
                 /*
-                 * 2. Confianza.
+                 * 2. Confianza global.
                  */
 
                 if (
-
-                    b.confianza !==
-
-                    a.confianza
-
+                    !this.sonIguales(
+                        a.confianza,
+                        b.confianza
+                    )
                 ) {
 
                     return (
-
                         b.confianza -
-
                         a.confianza
-
                     );
 
                 }
 
 
                 /*
-                 * 3. Cantidad de motores.
-
+                 * 3. Motores utilizados.
                  */
 
                 if (
-
                     b.cantidadMotores !==
-
                     a.cantidadMotores
-
                 ) {
 
                     return (
-
                         b.cantidadMotores -
-
                         a.cantidadMotores
-
                     );
 
                 }
 
 
                 /*
-                 * 4. Número como último
-                 * criterio determinista.
+                 * 4. Número solamente como
+                 * criterio estable de presentación.
+                 *
+                 * NO modifica la posición heurística
+                 * cuando existe empate real.
                  */
 
                 return (
-
                     a.numero -
-
                     b.numero
-
                 );
 
             }
@@ -827,71 +816,305 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
+    /*================================================================
         ASIGNAR POSICIONES
-    ==============================================================*/
+    ================================================================*/
 
     asignarPosiciones(
-
         ranking
-
     ) {
+
+        let posicionActual = 0;
+
+        let anterior = null;
+
 
         ranking.forEach(
 
-            (item, indice) => {
+            (
+                item,
+                indice
+            ) => {
 
-                item.posicion =
+                /*
+                 * Orden físico de la tabla.
+                 */
 
+                item.orden =
                     indice + 1;
+
+
+                /*
+                 * Primer candidato.
+                 */
+
+                if (!anterior) {
+
+                    posicionActual = 1;
+
+                    item.posicion =
+                        posicionActual;
+
+                    item.empate =
+                        false;
+
+                    anterior =
+                        item;
+
+                    return;
+
+                }
+
+
+                /*
+                 * Empate heurístico:
+                 *
+                 * - mismo score
+                 * - misma confianza
+                 * - misma cantidad de motores
+                 */
+
+                const empate =
+
+                    this.sonIguales(
+                        item.score,
+                        anterior.score
+                    ) &&
+
+                    this.sonIguales(
+                        item.confianza,
+                        anterior.confianza
+                    ) &&
+
+                    item.cantidadMotores ===
+                        anterior.cantidadMotores;
+
+
+                if (empate) {
+
+                    item.posicion =
+                        posicionActual;
+
+                    item.empate =
+                        true;
+
+                    anterior.empate =
+                        true;
+
+                }
+
+                else {
+
+                    /*
+                     * Ranking competitivo:
+                     *
+                     * 1,1,1,4...
+                     */
+
+                    posicionActual =
+                        indice + 1;
+
+                    item.posicion =
+                        posicionActual;
+
+                    item.empate =
+                        false;
+
+                }
+
+
+                anterior =
+                    item;
 
             }
 
         );
+
 
         return ranking;
 
     }
 
 
-    /*==============================================================
-        DISTRIBUCIÓN DEL RANKING
-    ==============================================================*/
+    /*================================================================
+        ASIGNAR PERCENTILES
+    ================================================================*/
+
+    asignarPercentiles(
+        ranking
+    ) {
+
+        const total =
+            ranking.length;
+
+
+        if (
+            total === 0
+        ) {
+
+            return ranking;
+
+        }
+
+
+        ranking.forEach(
+            item => {
+
+                if (
+                    total === 1
+                ) {
+
+                    item.percentil =
+                        100;
+
+                    return;
+
+                }
+
+
+                const percentil =
+
+                    100 *
+
+                    (
+
+                        1 -
+
+                        (
+
+                            item.posicion -
+                            1
+
+                        ) /
+
+                        (
+
+                            total -
+                            1
+
+                        )
+
+                    );
+
+
+                item.percentil =
+                    this.redondear(
+
+                        this.limitar(
+                            percentil,
+                            0,
+                            100
+                        ),
+
+                        2
+
+                    );
+
+            }
+        );
+
+
+        return ranking;
+
+    }
+
+
+    /*================================================================
+        CATEGORÍAS
+    ================================================================*/
+
+    asignarCategorias(
+        ranking
+    ) {
+
+        ranking.forEach(
+            item => {
+
+                const percentil =
+                    item.percentil;
+
+
+                if (
+                    percentil >= 90
+                ) {
+
+                    item.categoria =
+                        "MUY_ALTO";
+
+                }
+
+                else if (
+                    percentil >= 75
+                ) {
+
+                    item.categoria =
+                        "ALTO";
+
+                }
+
+                else if (
+                    percentil >= 50
+                ) {
+
+                    item.categoria =
+                        "MEDIO";
+
+                }
+
+                else if (
+                    percentil >= 25
+                ) {
+
+                    item.categoria =
+                        "BAJO";
+
+                }
+
+                else {
+
+                    item.categoria =
+                        "MUY_BAJO";
+
+                }
+
+            }
+        );
+
+
+        return ranking;
+
+    }
+
+
+    /*================================================================
+        DISTRIBUCIÓN POR RANGOS
+    ================================================================*/
 
     calcularDistribucion(
-
         ranking
-
     ) {
 
         const rangos = {};
 
 
         for (
-
             let i = 0;
-
             i < 10;
-
             i++
-
         ) {
 
             const inicio =
-
                 i * 10;
 
-
             const fin =
-
                 inicio + 9;
 
 
-            rangos[
+            const clave =
+                `${String(inicio).padStart(2, "0")}-${String(fin).padStart(2, "0")}`;
 
-                `${inicio}-${fin}`
 
-            ] = {
+            rangos[clave] = {
 
                 inicio,
 
@@ -900,6 +1123,8 @@ export default class MotorRanking {
                 cantidad: 0,
 
                 scorePromedio: 0,
+
+                confianzaPromedio: 0,
 
                 mejorPosicion: null,
 
@@ -911,62 +1136,62 @@ export default class MotorRanking {
 
 
         for (
-
-            const item of ranking
-
+            const item
+            of ranking
         ) {
 
-            const rango =
-
+            const inicio =
                 Math.floor(
-
                     item.numero /
-
                     10
-
                 ) * 10;
 
 
+            const fin =
+                inicio + 9;
+
+
             const clave =
+                `${String(inicio).padStart(2, "0")}-${String(fin).padStart(2, "0")}`;
 
-                `${rango}-${rango + 9}`;
+
+            const grupo =
+                rangos[clave];
 
 
-            if (
-
-                !rangos[clave]
-
-            ) {
+            if (!grupo) {
 
                 continue;
 
             }
 
 
-            rangos[clave].cantidad++;
+            grupo.cantidad++;
 
 
-            rangos[clave].numeros.push(
+            grupo.numeros.push({
 
-                item.numeroTexto
+                numero:
+                    item.numeroTexto,
 
-            );
+                posicion:
+                    item.posicion,
+
+                score:
+                    item.score
+
+            });
 
 
             if (
-
-                rangos[clave].mejorPosicion ===
-
+                grupo.mejorPosicion ===
                     null ||
 
                 item.posicion <
-
-                    rangos[clave].mejorPosicion
-
+                    grupo.mejorPosicion
             ) {
 
-                rangos[clave].mejorPosicion =
-
+                grupo.mejorPosicion =
                     item.posicion;
 
             }
@@ -974,87 +1199,70 @@ export default class MotorRanking {
         }
 
 
-        /*
-         * Score promedio por rango.
-
-         */
-
         for (
-
-            const clave in rangos
-
+            const clave
+            in rangos
         ) {
 
             const grupo =
+                rangos[clave];
 
+
+            if (
+                grupo.numeros.length ===
+                0
+            ) {
+
+                continue;
+
+            }
+
+
+            const candidatos =
                 ranking.filter(
 
-                    item => {
+                    item =>
+                        item.numero >=
+                            grupo.inicio &&
 
-                        const rango =
-
-                            Math.floor(
-
-                                item.numero /
-
-                                10
-
-                            ) * 10;
-
-
-                        return (
-
-                            `${rango}-${rango + 9}` ===
-
-                            clave
-
-                        );
-
-                    }
+                        item.numero <=
+                            grupo.fin
 
                 );
 
 
-            if (
+            grupo.scorePromedio =
+                this.redondear(
 
-                grupo.length > 0
+                    this.promedio(
 
-            ) {
+                        candidatos.map(
+                            item =>
+                                item.score
+                        )
 
-                const suma =
+                    ),
 
-                    grupo.reduce(
+                    4
 
-                        (
-
-                            acumulado,
-
-                            item
-
-                        ) =>
-
-                            acumulado +
-
-                            item.score,
-
-                        0
-
-                    );
+                );
 
 
-                rangos[clave].scorePromedio =
+            grupo.confianzaPromedio =
+                this.redondear(
 
-                    this.redondear(
+                    this.promedio(
 
-                        suma /
+                        candidatos.map(
+                            item =>
+                                item.confianza
+                        )
 
-                        grupo.length,
+                    ),
 
-                        4
+                    4
 
-                    );
-
-            }
+                );
 
         }
 
@@ -1064,208 +1272,163 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
-        ESTADÍSTICAS
-    ==============================================================*/
+    /*================================================================
+        ESTADÍSTICAS GENERALES
+    ================================================================*/
 
     calcularEstadisticas(
-
         ranking
-
     ) {
 
         if (
-
-            ranking.length === 0
-
+            ranking.length ===
+            0
         ) {
 
-            return {
-
-                scoreMaximo: 0,
-
-                scoreMinimo: 0,
-
-                scorePromedio: 0,
-
-                confianzaPromedio: 0,
-
-                diferenciaTop1Top10: 0,
-
-                diferenciaTop10Top20: 0
-
-            };
+            return this.estadisticasVacias();
 
         }
 
 
         const scores =
-
             ranking.map(
-
                 item =>
-
                     item.score
-
             );
 
 
         const confianzas =
-
             ranking.map(
-
                 item =>
-
                     item.confianza
-
             );
 
 
-        const sumaScores =
-
-            scores.reduce(
-
-                (
-
-                    suma,
-
-                    valor
-
-                ) =>
-
-                    suma + valor,
-
-                0
-
+        const scorePromedio =
+            this.promedio(
+                scores
             );
 
 
-        const sumaConfianzas =
+        const confianzaPromedio =
+            this.promedio(
+                confianzas
+            );
 
-            confianzas.reduce(
 
-                (
+        const scoreMaximo =
+            Math.max(
+                ...scores
+            );
 
-                    suma,
 
-                    valor
+        const scoreMinimo =
+            Math.min(
+                ...scores
+            );
 
-                ) =>
 
-                    suma + valor,
-
-                0
-
+        const desviacionScore =
+            this.desviacionEstandar(
+                scores
             );
 
 
         const top1 =
-
-            ranking[0]?.score ||
-
+            ranking[0]?.score ??
             0;
 
 
         const top10 =
-
-            ranking[9]?.score ||
-
+            ranking[9]?.score ??
             0;
 
 
         const top20 =
-
-            ranking[19]?.score ||
-
+            ranking[19]?.score ??
             0;
+
+
+        const posicionesUnicas =
+            new Set(
+
+                ranking.map(
+                    item =>
+                        item.posicion
+                )
+
+            );
+
+
+        const cantidadEmpatados =
+            ranking.filter(
+                item =>
+                    item.empate
+            ).length;
 
 
         return {
 
             scoreMaximo:
-
                 this.redondear(
-
-                    Math.max(
-
-                        ...scores
-
-                    ),
-
+                    scoreMaximo,
                     6
-
                 ),
 
             scoreMinimo:
-
                 this.redondear(
-
-                    Math.min(
-
-                        ...scores
-
-                    ),
-
+                    scoreMinimo,
                     6
-
                 ),
 
             scorePromedio:
-
                 this.redondear(
-
-                    sumaScores /
-
-                    ranking.length,
-
+                    scorePromedio,
                     6
+                ),
 
+            desviacionScore:
+                this.redondear(
+                    desviacionScore,
+                    6
                 ),
 
             confianzaPromedio:
-
                 this.redondear(
-
-                    sumaConfianzas /
-
-                    ranking.length,
-
+                    confianzaPromedio,
                     6
-
                 ),
 
             diferenciaTop1Top10:
-
                 this.redondear(
-
                     top1 -
-
                     top10,
-
                     6
-
                 ),
 
             diferenciaTop10Top20:
-
                 this.redondear(
-
                     top10 -
-
                     top20,
-
                     6
+                ),
 
-                )
+            posicionesUnicas:
+                posicionesUnicas.size,
+
+            cantidadEmpatados,
+
+            totalNumeros:
+                ranking.length
 
         };
 
     }
 
 
-    /*==============================================================
+    /*================================================================
         RESUMEN PARA IA
-    ==============================================================*/
+    ================================================================*/
 
     generarResumenIA(
 
@@ -1283,113 +1446,66 @@ export default class MotorRanking {
 
     ) {
 
-        /*
-         * Esta estructura no es todavía una llamada
-         * a una IA.
-         *
-         * Es un paquete de información estructurada
-         * que posteriormente podrá enviarse a un LLM
-         * para:
-         *
-         *   - explicar resultados
-         *   - detectar patrones
-         *   - sugerir variables
-         *   - detectar cambios
-         *   - interpretar evolución
-         */
-
         return {
 
             fecha:
+                new Date()
+                    .toISOString(),
 
-                new Date().toISOString(),
+            modelo: {
 
-            versionModelo:
+                nombre:
+                    this.nombre,
 
-                this.version,
+                version:
+                    this.version
+
+            },
 
             totalNumeros:
-
                 ranking.length,
 
-
             top10:
-
                 top10.map(
-
                     item =>
-
                         this.formatoIA(
-
                             item
-
                         )
-
                 ),
-
 
             top20:
-
                 top20.map(
-
                     item =>
-
                         this.formatoIA(
-
                             item
-
                         )
-
                 ),
-
 
             equipoTitular:
-
                 titulares.map(
-
                     item =>
-
                         this.formatoIA(
-
                             item
-
                         )
-
                 ),
-
 
             equipoSuplente:
-
                 suplentes.map(
-
                     item =>
-
                         this.formatoIA(
-
                             item
-
                         )
-
                 ),
 
-
             estadisticasGenerales:
-
                 estadisticas,
 
-
             rankingCompleto:
-
                 ranking.map(
-
                     item =>
-
                         this.formatoIA(
-
                             item
-
                         )
-
                 )
 
         };
@@ -1397,70 +1513,83 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
+    /*================================================================
         FORMATO PARA IA
-    ==============================================================*/
+    ================================================================*/
 
     formatoIA(
-
         item
-
     ) {
 
         return {
 
             numero:
-
                 item.numeroTexto,
 
             posicion:
-
                 item.posicion,
 
-            score:
+            orden:
+                item.orden,
 
+            empate:
+                item.empate,
+
+            percentil:
+                item.percentil,
+
+            categoria:
+                item.categoria,
+
+            score:
                 item.score,
 
             confianza:
-
                 item.confianza,
 
-            cantidadMotores:
+            diferenciaPromedio:
+                item.diferenciaPromedio,
 
+            cantidadMotores:
                 item.cantidadMotores,
 
-            motores:
+            motoresDisponibles:
+                item.motoresDisponibles,
 
+            motores:
                 Object.fromEntries(
 
                     Object.entries(
 
-                        item.resumenMotores ||
-
+                        item.resumenMotores ??
                         {}
 
                     ).map(
 
-                        ([clave, datos]) => [
+                        (
+                            [
+                                clave,
+                                datos
+                            ]
+                        ) => [
 
                             clave,
 
                             {
 
                                 score:
-
                                     datos.score,
 
                                 confianza:
-
                                     datos.confianza,
 
                                 peso:
-
                                     datos.peso,
 
-                                indicadores:
+                                evidencia:
+                                    datos.evidencia,
 
+                                indicadores:
                                     datos.indicadores
 
                             }
@@ -1476,171 +1605,113 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
-        PREPARAR PREDICCIÓN PARA GUARDAR
-    ==============================================================*/
+    /*================================================================
+        PREPARAR PREDICCIÓN
+    ================================================================*/
 
     prepararPrediccion(
-
         ranking,
-
         datosSemana = {}
-
     ) {
 
         if (
-
             !ranking ||
-
             !Array.isArray(
-
                 ranking.ranking
-
             )
-
         ) {
 
             throw new Error(
-
                 "Ranking inválido."
-
             );
 
         }
 
 
-        /*
-         * Esta estructura está pensada para
-         * guardarse antes de conocer los números
-         * reales de la próxima semana.
-         */
-
         return {
 
             id:
-
                 ranking.id,
 
             fechaPrediccion:
-
                 ranking.generadoEn,
 
-
             semanaObjetivo:
-
-                datosSemana.semanaObjetivo ||
-
+                datosSemana.semanaObjetivo ??
                 null,
-
 
             fechaObjetivo:
-
-                datosSemana.fechaObjetivo ||
-
+                datosSemana.fechaObjetivo ??
                 null,
-
 
             modelo: {
 
                 nombre:
-
                     this.nombre,
 
                 version:
-
                     this.version
 
             },
 
-
             top10:
-
                 ranking.top10.map(
-
                     item =>
-
                         this.crearRegistroPrediccion(
-
                             item
-
                         )
-
                 ),
-
 
             top20:
-
                 ranking.top20.map(
-
                     item =>
-
                         this.crearRegistroPrediccion(
-
                             item
-
                         )
-
                 ),
-
 
             equipoTitular:
-
                 ranking.equipoTitular.map(
-
                     item =>
-
                         this.crearRegistroPrediccion(
-
                             item
-
                         )
-
                 ),
-
 
             equipoSuplente:
-
                 ranking.equipoSuplente.map(
-
                     item =>
-
                         this.crearRegistroPrediccion(
-
                             item
-
                         )
-
                 ),
-
 
             rankingCompleto:
-
                 ranking.ranking.map(
-
                     item =>
-
                         this.crearRegistroPrediccion(
-
                             item
-
                         )
-
                 ),
-
 
             evaluacion: {
 
                 realizada: false,
 
-                aciertosTop10: null,
+                aciertosTop10:
+                    null,
 
-                aciertosTop20: null,
+                aciertosTop20:
+                    null,
 
-                aciertosTitulares: null,
+                aciertosTitulares:
+                    null,
 
-                aciertosSuplentes: null,
+                aciertosSuplentes:
+                    null,
 
-                fechaEvaluacion: null
+                fechaEvaluacion:
+                    null
 
             }
 
@@ -1649,40 +1720,44 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
-        REGISTRO INDIVIDUAL DE PREDICCIÓN
-    ==============================================================*/
+    /*================================================================
+        REGISTRO DE PREDICCIÓN
+    ================================================================*/
 
     crearRegistroPrediccion(
-
         item
-
     ) {
 
         return {
 
             numero:
-
                 item.numeroTexto,
 
             posicion:
-
                 item.posicion,
 
-            score:
+            orden:
+                item.orden,
 
+            empate:
+                item.empate,
+
+            percentil:
+                item.percentil,
+
+            categoria:
+                item.categoria,
+
+            score:
                 item.score,
 
             confianza:
-
                 item.confianza,
 
             cantidadMotores:
-
                 item.cantidadMotores,
 
             motores:
-
                 item.resumenMotores
 
         };
@@ -1690,63 +1765,43 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
+    /*================================================================
         EVALUAR PREDICCIÓN
-    ==============================================================*/
+    ================================================================*/
 
     evaluarPrediccion(
-
         prediccion,
-
         numerosReales
-
     ) {
 
-        if (
-
-            !prediccion
-
-        ) {
+        if (!prediccion) {
 
             throw new Error(
-
                 "Predicción inexistente."
-
             );
 
         }
 
 
         const reales =
-
             this.normalizarListaNumeros(
-
                 numerosReales
-
             );
 
 
         const realesSet =
-
             new Set(
-
                 reales
-
             );
 
 
         const evaluarGrupo =
-
             grupo => {
 
                 if (
-
                     !Array.isArray(
-
                         grupo
-
                     )
-
                 ) {
 
                     return {
@@ -1763,17 +1818,13 @@ export default class MotorRanking {
 
 
                 const aciertos =
-
                     grupo.filter(
 
                         item =>
-
                             realesSet.has(
 
                                 Number(
-
                                     item.numero
-
                                 )
 
                             )
@@ -1784,7 +1835,6 @@ export default class MotorRanking {
                 return {
 
                     aciertos:
-
                         aciertos.length,
 
                     porcentaje:
@@ -1796,7 +1846,6 @@ export default class MotorRanking {
                                 (
 
                                     aciertos.length /
-
                                     grupo.length
 
                                 ) * 100,
@@ -1808,13 +1857,9 @@ export default class MotorRanking {
                             : 0,
 
                     numerosAcertados:
-
                         aciertos.map(
-
                             item =>
-
                                 item.numero
-
                         )
 
                 };
@@ -1825,80 +1870,46 @@ export default class MotorRanking {
         const resultado = {
 
             fechaEvaluacion:
-
-                new Date().toISOString(),
+                new Date()
+                    .toISOString(),
 
             numerosReales:
-
                 reales.map(
-
                     numero =>
-
                         this.formatearNumero(
-
                             numero
-
                         )
-
                 ),
 
             top10:
-
                 evaluarGrupo(
-
                     prediccion.top10
-
                 ),
 
             top20:
-
                 evaluarGrupo(
-
                     prediccion.top20
-
                 ),
 
             equipoTitular:
-
                 evaluarGrupo(
-
                     prediccion.equipoTitular
-
                 ),
 
             equipoSuplente:
-
                 evaluarGrupo(
-
                     prediccion.equipoSuplente
+                ),
 
+            rankingCompleto:
+                evaluarGrupo(
+                    prediccion.rankingCompleto
                 )
 
         };
 
 
-        /*
-         * Evaluamos el ranking completo.
-
-         */
-
-        resultado.rankingCompleto =
-
-            evaluarGrupo(
-
-                prediccion.rankingCompleto
-
-            );
-
-
-        /*
-         * Información adicional para
-         * la futura autoevaluación.
-
-         */
-
         resultado.aciertosPorPosicion =
-
             this.calcularAciertosPorPosicion(
 
                 prediccion,
@@ -1909,7 +1920,6 @@ export default class MotorRanking {
 
 
         resultado.mejoresAciertos =
-
             this.obtenerMejoresAciertos(
 
                 prediccion,
@@ -1924,113 +1934,19 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
+    /*================================================================
         ACIERTOS POR POSICIÓN
-    ==============================================================*/
+    ================================================================*/
 
     calcularAciertosPorPosicion(
-
         prediccion,
-
         realesSet
-
-    ) {
-
-        const resultado = [];
-
-
-        if (
-
-            !Array.isArray(
-
-                prediccion.rankingCompleto
-
-            )
-
-        ) {
-
-            return resultado;
-
-        }
-
-
-        for (
-
-            const item of
-
-                prediccion.rankingCompleto
-
-        ) {
-
-            const numero =
-
-                Number(
-
-                    item.numero
-
-                );
-
-
-            resultado.push({
-
-                numero:
-
-                    item.numero,
-
-                posicion:
-
-                    item.posicion,
-
-                acierto:
-
-                    realesSet.has(
-
-                        numero
-
-                    ),
-
-                score:
-
-                    item.score,
-
-                confianza:
-
-                    item.confianza,
-
-                motores:
-
-                    item.motores
-
-            });
-
-        }
-
-
-        return resultado;
-
-    }
-
-
-    /*==============================================================
-        MEJORES ACIERTOS
-    ==============================================================*/
-
-    obtenerMejoresAciertos(
-
-        prediccion,
-
-        realesSet
-
     ) {
 
         if (
-
             !Array.isArray(
-
                 prediccion.rankingCompleto
-
             )
-
         ) {
 
             return [];
@@ -2038,18 +1954,82 @@ export default class MotorRanking {
         }
 
 
-        return prediccion.rankingCompleto
+        return prediccion
+            .rankingCompleto
+            .map(
+
+                item => {
+
+                    const numero =
+                        Number(
+                            item.numero
+                        );
+
+
+                    return {
+
+                        numero:
+                            item.numero,
+
+                        posicion:
+                            item.posicion,
+
+                        orden:
+                            item.orden,
+
+                        acierto:
+                            realesSet.has(
+                                numero
+                            ),
+
+                        score:
+                            item.score,
+
+                        confianza:
+                            item.confianza,
+
+                        motores:
+                            item.motores
+
+                    };
+
+                }
+
+            );
+
+    }
+
+
+    /*================================================================
+        MEJORES ACIERTOS
+    ================================================================*/
+
+    obtenerMejoresAciertos(
+        prediccion,
+        realesSet
+    ) {
+
+        if (
+            !Array.isArray(
+                prediccion.rankingCompleto
+            )
+        ) {
+
+            return [];
+
+        }
+
+
+        return prediccion
+            .rankingCompleto
 
             .filter(
 
                 item =>
-
                     realesSet.has(
 
                         Number(
-
                             item.numero
-
                         )
 
                     )
@@ -2061,23 +2041,21 @@ export default class MotorRanking {
                 item => ({
 
                     numero:
-
                         item.numero,
 
                     posicion:
-
                         item.posicion,
 
-                    score:
+                    orden:
+                        item.orden,
 
+                    score:
                         item.score,
 
                     confianza:
-
                         item.confianza,
 
                     motores:
-
                         item.motores
 
                 })
@@ -2086,35 +2064,45 @@ export default class MotorRanking {
 
             .sort(
 
-                (a, b) =>
+                (a, b) => {
 
-                    a.posicion -
+                    if (
+                        a.posicion !==
+                        b.posicion
+                    ) {
 
-                    b.posicion
+                        return (
+                            a.posicion -
+                            b.posicion
+                        );
+
+                    }
+
+
+                    return (
+                        a.orden -
+                        b.orden
+                    );
+
+                }
 
             );
 
     }
 
 
-    /*==============================================================
+    /*================================================================
         NORMALIZAR LISTA
-    ==============================================================*/
+    ================================================================*/
 
     normalizarListaNumeros(
-
         numeros
-
     ) {
 
         if (
-
             !Array.isArray(
-
                 numeros
-
             )
-
         ) {
 
             return [];
@@ -2123,43 +2111,30 @@ export default class MotorRanking {
 
 
         const unicos =
-
             new Set();
 
 
         for (
-
-            const numero of numeros
-
+            const numero
+            of numeros
         ) {
 
             const valor =
-
                 Number(
-
                     numero
-
                 );
 
 
             if (
-
                 Number.isInteger(
-
                     valor
-
                 ) &&
-
                 valor >= 0 &&
-
                 valor <= 99
-
             ) {
 
                 unicos.add(
-
                     valor
-
                 );
 
             }
@@ -2168,33 +2143,32 @@ export default class MotorRanking {
 
 
         return [
-
             ...unicos
-
         ];
 
     }
 
 
-    /*==============================================================
+    /*================================================================
         RESULTADO VACÍO
-    ==============================================================*/
+    ================================================================*/
 
     resultadoVacio() {
 
         return {
 
             id:
-
                 this.generarIdRanking(),
 
-            version:
+            nombre:
+                this.nombre,
 
+            version:
                 this.version,
 
             generadoEn:
-
-                new Date().toISOString(),
+                new Date()
+                    .toISOString(),
 
             totalNumeros: 0,
 
@@ -2210,21 +2184,8 @@ export default class MotorRanking {
 
             distribucion: {},
 
-            estadisticas: {
-
-                scoreMaximo: 0,
-
-                scoreMinimo: 0,
-
-                scorePromedio: 0,
-
-                confianzaPromedio: 0,
-
-                diferenciaTop1Top10: 0,
-
-                diferenciaTop10Top20: 0
-
-            },
+            estadisticas:
+                this.estadisticasVacias(),
 
             resumenIA: {
 
@@ -2245,88 +2206,94 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
-        GENERAR ID
-    ==============================================================*/
+    /*================================================================
+        ESTADÍSTICAS VACÍAS
+    ================================================================*/
 
-    generarIdRanking() {
+    estadisticasVacias() {
 
-        const fecha =
+        return {
 
-            new Date()
+            scoreMaximo: 0,
 
-                .toISOString()
+            scoreMinimo: 0,
 
-                .replace(
+            scorePromedio: 0,
 
-                    /[^0-9]/g,
+            desviacionScore: 0,
 
-                    ""
+            confianzaPromedio: 0,
 
-                );
+            diferenciaTop1Top10: 0,
 
+            diferenciaTop10Top20: 0,
 
-        const aleatorio =
+            posicionesUnicas: 0,
 
-            Math.random()
+            cantidadEmpatados: 0,
 
-                .toString(
+            totalNumeros: 0
 
-                    36
-
-                )
-
-                .substring(
-
-                    2,
-
-                    8
-
-                );
-
-
-        return `ranking_${fecha}_${aleatorio}`;
+        };
 
     }
 
 
-    /*==============================================================
+    /*================================================================
+        ID RANKING
+    ================================================================*/
+
+    generarIdRanking() {
+
+        const fecha =
+            new Date()
+                .toISOString()
+                .replace(
+                    /[^0-9]/g,
+                    ""
+                );
+
+
+        const aleatorio =
+            Math.random()
+                .toString(36)
+                .substring(
+                    2,
+                    8
+                );
+
+
+        return (
+            `ranking_${fecha}_${aleatorio}`
+        );
+
+    }
+
+
+    /*================================================================
         NORMALIZAR NÚMERO
-    ==============================================================*/
+    ================================================================*/
 
     normalizarNumero(
-
         numero
-
     ) {
 
         const valor =
-
             Number(
-
                 numero
-
             );
 
 
         if (
-
             !Number.isInteger(
-
                 valor
-
             ) ||
-
             valor < 0 ||
-
             valor > 99
-
         ) {
 
             throw new Error(
-
                 `Número inválido: ${numero}. Debe estar entre 00 y 99.`
-
             );
 
         }
@@ -2337,111 +2304,111 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
+    /*================================================================
         FORMATO 00-99
-    ==============================================================*/
+    ================================================================*/
 
     formatearNumero(
-
         numero
-
     ) {
 
         return String(
 
             this.normalizarNumero(
-
                 numero
-
             )
 
         ).padStart(
-
             2,
-
             "0"
+        );
+
+    }
+
+
+    /*================================================================
+        NÚMERO SEGURO
+    ================================================================*/
+
+    numeroSeguro(
+        valor,
+        defecto = 0
+    ) {
+
+        const numero =
+            Number(
+                valor
+            );
+
+
+        return Number.isFinite(
+            numero
+        )
+            ? numero
+            : defecto;
+
+    }
+
+
+    /*================================================================
+        LIMITAR
+    ================================================================*/
+
+    limitar(
+        valor,
+        minimo = 0,
+        maximo = 100
+    ) {
+
+        const numero =
+            this.numeroSeguro(
+                valor,
+                minimo
+            );
+
+
+        return Math.min(
+
+            maximo,
+
+            Math.max(
+                minimo,
+                numero
+            )
 
         );
 
     }
 
 
-    /*==============================================================
-        NÚMERO SEGURO
-    ==============================================================*/
-
-    numeroSeguro(
-
-        valor,
-
-        defecto = 0
-
-    ) {
-
-        const numero =
-
-            Number(
-
-                valor
-
-            );
-
-
-        return Number.isFinite(
-
-            numero
-
-        )
-
-            ? numero
-
-            : defecto;
-
-    }
-
-
-    /*==============================================================
+    /*================================================================
         REDONDEAR
-    ==============================================================*/
+    ================================================================*/
 
     redondear(
-
         valor,
-
         decimales = 4
-
     ) {
 
         const numero =
-
             this.numeroSeguro(
-
                 valor
-
             );
 
 
         const factor =
-
             Math.pow(
-
                 10,
-
                 decimales
-
             );
 
 
         return (
 
             Math.round(
-
                 numero *
-
                 factor
-
             ) /
-
             factor
 
         );
@@ -2449,28 +2416,198 @@ export default class MotorRanking {
     }
 
 
-    /*==============================================================
-        OBTENER TOP
-    ==============================================================*/
+    /*================================================================
+        PROMEDIO
+    ================================================================*/
 
-    obtenerTop(
-
-        ranking,
-
-        cantidad = 10
-
+    promedio(
+        lista = []
     ) {
 
         if (
-
-            !ranking ||
-
             !Array.isArray(
+                lista
+            ) ||
+            lista.length === 0
+        ) {
 
+            return 0;
+
+        }
+
+
+        const validos =
+            lista
+                .map(Number)
+                .filter(
+                    Number.isFinite
+                );
+
+
+        if (
+            validos.length === 0
+        ) {
+
+            return 0;
+
+        }
+
+
+        return (
+
+            validos.reduce(
+                (
+                    suma,
+                    valor
+                ) =>
+                    suma +
+                    valor,
+                0
+            ) /
+            validos.length
+
+        );
+
+    }
+
+
+    /*================================================================
+        DESVIACIÓN ESTÁNDAR
+    ================================================================*/
+
+    desviacionEstandar(
+        lista = []
+    ) {
+
+        if (
+            !Array.isArray(
+                lista
+            ) ||
+            lista.length === 0
+        ) {
+
+            return 0;
+
+        }
+
+
+        const promedio =
+            this.promedio(
+                lista
+            );
+
+
+        const varianza =
+            lista.reduce(
+
+                (
+                    acumulado,
+                    valor
+                ) => {
+
+                    const diferencia =
+                        Number(valor) -
+                        promedio;
+
+
+                    return (
+
+                        acumulado +
+                        Math.pow(
+                            diferencia,
+                            2
+                        )
+
+                    );
+
+                },
+
+                0
+
+            ) /
+            lista.length;
+
+
+        return Math.sqrt(
+            varianza
+        );
+
+    }
+
+
+    /*================================================================
+        COMPARAR CON TOLERANCIA
+    ================================================================*/
+
+    sonIguales(
+        a,
+        b
+    ) {
+
+        return (
+
+            Math.abs(
+
+                this.numeroSeguro(a) -
+                this.numeroSeguro(b)
+
+            ) <=
+
+            this.configuracion
+                .toleranciaEmpate
+
+        );
+
+    }
+
+
+    /*================================================================
+        NORMALIZAR CANTIDAD
+    ================================================================*/
+
+    normalizarCantidad(
+        valor,
+        defecto
+    ) {
+
+        const numero =
+            Number(valor);
+
+
+        if (
+            !Number.isInteger(
+                numero
+            ) ||
+            numero <= 0
+        ) {
+
+            return defecto;
+
+        }
+
+
+        return Math.min(
+            numero,
+            100
+        );
+
+    }
+
+
+    /*================================================================
+        OBTENER TOP
+    ================================================================*/
+
+    obtenerTop(
+        ranking,
+        cantidad = 10
+    ) {
+
+        if (
+            !ranking ||
+            !Array.isArray(
                 ranking.ranking
-
             )
-
         ) {
 
             return [];
@@ -2478,50 +2615,41 @@ export default class MotorRanking {
         }
 
 
-        return ranking.ranking.slice(
+        return ranking
+            .ranking
+            .slice(
 
-            0,
+                0,
 
-            Math.max(
+                this.normalizarCantidad(
+                    cantidad,
+                    10
+                )
 
-                1,
-
-                Number(
-
-                    cantidad
-
-                ) || 10
-
-            )
-
-        );
+            );
 
     }
 
 
-    /*==============================================================
+    /*================================================================
         OBTENER ESTADO
-    ==============================================================*/
+    ================================================================*/
 
     obtenerEstado() {
 
         return {
 
             nombre:
-
                 this.nombre,
 
             version:
-
                 this.version,
 
-            configuracion:
+            configuracion: {
 
-                {
+                ...this.configuracion
 
-                    ...this.configuracion
-
-                }
+            }
 
         };
 
