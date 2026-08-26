@@ -4,142 +4,214 @@
  * Archivo:
  * js/motores/MotorEvolucion.js
  *
+ * Versión:
+ * 2.1.0
+ *
  * Propósito:
- * Analizar la evolución histórica del modelo a partir de las
+ *
+ * Analizar la evolución histórica del modelo utilizando las
  * evaluaciones generadas por MotorEvaluacion.
  *
  * Responsabilidades:
  *
  *   - Analizar múltiples evaluaciones históricas.
- *   - Calcular rendimiento por períodos.
- *   - Detectar tendencias de mejora o deterioro.
- *   - Comparar períodos anteriores y recientes.
- *   - Analizar evolución de cada motor.
+ *   - Calcular rendimiento general.
+ *   - Construir y comparar períodos.
+ *   - Detectar tendencias globales.
+ *   - Analizar evolución individual de cada motor.
+ *   - Analizar ventajaScore.
+ *   - Analizar ventajaConfianza.
+ *   - Analizar indiceDiscriminacion.
+ *   - Comparar período reciente contra período anterior.
+ *   - Detectar motores consistentes.
  *   - Detectar motores en mejora.
  *   - Detectar motores en deterioro.
- *   - Detectar estabilidad.
+ *   - Detectar cambios específicos por motor.
  *   - Detectar cambios bruscos.
- *   - Generar señales para el futuro optimizador.
+ *   - Generar ranking evolutivo de motores.
+ *   - Generar señales para un futuro optimizador.
  *   - Generar información estructurada para IA.
  *
  * IMPORTANTE:
  *
- * Este motor NO modifica pesos.
+ * MotorEvolucion NO modifica automáticamente los pesos.
  *
- * Su función es observar y medir la evolución.
+ * Su función es observar, medir y generar evidencia.
+ *
+ * Los cambios de peso serán responsabilidad de un componente
+ * posterior de optimización.
  *
  **********************************************************************/
+
 
 export default class MotorEvolucion {
 
 
+    /*================================================================
+        CONSTRUCTOR
+    ================================================================*/
+
     constructor(configuracion = {}) {
 
         this.nombre =
-
             "MotorEvolucion";
 
 
         this.version =
-
-            "1.0.0";
+            "2.1.0";
 
 
         this.configuracion = {
 
             /*
-             * Cantidad mínima de evaluaciones necesarias
-             * para comparar dos períodos.
+             * Evaluaciones mínimas antes de permitir
+             * señales utilizables por un optimizador.
              */
 
             minimoEvaluaciones:
 
-                configuracion.minimoEvaluaciones ||
-
-                5,
+                Number(
+                    configuracion.minimoEvaluaciones
+                ) || 20,
 
 
             /*
-             * Tamaño predeterminado del período reciente.
+             * Ventana máxima considerada reciente.
              */
 
             periodoReciente:
 
-                configuracion.periodoReciente ||
-
-                10,
+                Number(
+                    configuracion.periodoReciente
+                ) || 10,
 
 
             /*
-             * Cantidad de períodos utilizados
-             * para calcular tendencias.
-
+             * Cantidad máxima de períodos globales.
              */
 
             cantidadPeriodos:
 
-                configuracion.cantidadPeriodos ||
-
-                5,
+                Number(
+                    configuracion.cantidadPeriodos
+                ) || 5,
 
 
             /*
-             * Umbral a partir del cual consideramos
-             * que una variación es significativa.
-             *
-             * Se expresa en puntos porcentuales
-             * de rendimiento.
-
+             * Umbral de cambio global.
              */
 
             umbralCambio:
 
-                configuracion.umbralCambio ||
-
-                5,
+                Number(
+                    configuracion.umbralCambio
+                ) || 5,
 
 
             /*
              * Umbral de cambio fuerte.
-
              */
 
             umbralCambioFuerte:
 
-                configuracion.umbralCambioFuerte ||
+                Number(
+                    configuracion.umbralCambioFuerte
+                ) || 15,
 
-                15
+
+            /*
+             * Diferencia mínima reciente/anterior
+             * considerada significativa para un motor.
+             */
+
+            umbralDiscriminacion:
+
+                Number.isFinite(
+                    Number(
+                        configuracion.umbralDiscriminacion
+                    )
+                )
+
+                    ? Number(
+                        configuracion.umbralDiscriminacion
+                    )
+
+                    : 2,
+
+
+            /*
+             * Índice histórico positivo mínimo.
+             */
+
+            minimoIndicePositivo:
+
+                Number.isFinite(
+                    Number(
+                        configuracion.minimoIndicePositivo
+                    )
+                )
+
+                    ? Number(
+                        configuracion.minimoIndicePositivo
+                    )
+
+                    : 1,
+
+
+            /*
+             * Cantidad mínima de evaluaciones antes
+             * de considerar una tendencia individual
+             * como evidencia temporal.
+             */
+
+            minimoEvaluacionesTendencia:
+
+                Number(
+                    configuracion.minimoEvaluacionesTendencia
+                ) || 3,
+
+
+            /*
+             * Pendiente mínima para considerar
+             * que existe una tendencia temporal.
+             */
+
+            pendienteMinimaMotor:
+
+                Number.isFinite(
+                    Number(
+                        configuracion.pendienteMinimaMotor
+                    )
+                )
+
+                    ? Number(
+                        configuracion.pendienteMinimaMotor
+                    )
+
+                    : 0.05
 
         };
 
     }
 
 
-    /*==============================================================
+    /*================================================================
         MÉTODO PRINCIPAL
-    ==============================================================*/
+    ================================================================*/
 
     analizar(
-
         evaluaciones,
-
         opciones = {}
-
     ) {
 
         const lista =
-
             this.normalizarEvaluaciones(
-
                 evaluaciones
-
             );
 
 
         if (
-
             lista.length === 0
-
         ) {
 
             return this.resultadoVacio();
@@ -147,132 +219,78 @@ export default class MotorEvolucion {
         }
 
 
-        /*
-         * Ordenamos cronológicamente.
-
-         */
-
         const ordenadas =
-
             this.ordenarEvaluaciones(
-
                 lista
-
             );
 
-
-        /*
-         * Analizamos rendimiento general.
-
-         */
 
         const rendimientoGeneral =
-
             this.analizarRendimientoGeneral(
-
                 ordenadas
-
             );
 
 
-        /*
-         * Analizamos períodos.
-
-         */
-
         const periodos =
-
             this.construirPeriodos(
-
                 ordenadas,
-
                 opciones
-
             );
 
 
         const comparacionPeriodos =
-
             this.compararPeriodos(
-
                 periodos
-
             );
 
-
-        /*
-         * Analizamos tendencia global.
-
-         */
 
         const tendencias =
-
             this.analizarTendencias(
-
                 ordenadas
-
             );
 
 
-        /*
-         * Analizamos cada motor.
-
-         */
-
-        const motores =
-
+        const evolucionMotores =
             this.analizarEvolucionMotores(
-
                 ordenadas
-
             );
 
-
-        /*
-         * Detectamos cambios.
-
-         */
 
         const cambios =
-
             this.detectarCambios(
 
                 ordenadas,
 
-                motores,
+                evolucionMotores,
 
                 tendencias
 
             );
 
 
-        /*
-         * Generamos señales para el optimizador.
+        const datosSuficientes =
+            this.hayDatosSuficientes(
+                ordenadas.length
+            );
 
-         */
 
         const señalesOptimizacion =
-
             this.generarSeñalesOptimizacion(
 
                 tendencias,
 
-                motores,
+                evolucionMotores,
 
                 cambios,
 
-                comparacionPeriodos
+                comparacionPeriodos,
+
+                datosSuficientes
 
             );
 
 
-        /*
-         * Generamos resumen para IA.
-
-         */
-
         const resumenIA =
-
             this.generarResumenIA(
 
                 ordenadas,
@@ -285,11 +303,13 @@ export default class MotorEvolucion {
 
                 tendencias,
 
-                motores,
+                evolucionMotores,
 
                 cambios,
 
-                señalesOptimizacion
+                señalesOptimizacion,
+
+                datosSuficientes
 
             );
 
@@ -297,45 +317,66 @@ export default class MotorEvolucion {
         return {
 
             id:
-
                 this.generarIdAnalisis(),
 
+            nombre:
+                this.nombre,
 
             version:
-
                 this.version,
 
-
             generadoEn:
-
-                new Date().toISOString(),
-
+                new Date()
+                    .toISOString(),
 
             cantidadEvaluaciones:
-
                 ordenadas.length,
 
+            datosSuficientes,
+
+            minimoEvaluaciones:
+                this.configuracion
+                    .minimoEvaluaciones,
 
             rendimientoGeneral,
 
-
             periodos,
-
 
             comparacionPeriodos,
 
-
             tendencias,
 
+            motores:
+                evolucionMotores
+                    .porMotor,
 
-            motores,
+            rankingMotores:
+                evolucionMotores
+                    .rankingMotores,
 
+            mejorMotorHistorico:
+                evolucionMotores
+                    .mejorMotorHistorico,
+
+            mejorMotorReciente:
+                evolucionMotores
+                    .mejorMotorReciente,
+
+            motoresConsistentes:
+                evolucionMotores
+                    .motoresConsistentes,
+
+            motoresEnMejora:
+                evolucionMotores
+                    .motoresEnMejora,
+
+            motoresEnDeterioro:
+                evolucionMotores
+                    .motoresEnDeterioro,
 
             cambios,
 
-
             señalesOptimizacion,
-
 
             resumenIA
 
@@ -344,24 +385,18 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
+    /*================================================================
         NORMALIZAR EVALUACIONES
-    ==============================================================*/
+    ================================================================*/
 
     normalizarEvaluaciones(
-
         evaluaciones
-
     ) {
 
         if (
-
             !Array.isArray(
-
                 evaluaciones
-
             )
-
         ) {
 
             return [];
@@ -378,7 +413,6 @@ export default class MotorEvolucion {
                     evaluacion !== null &&
 
                     typeof evaluacion ===
-
                         "object"
 
             )
@@ -404,14 +438,12 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
+    /*================================================================
         ORDENAR EVALUACIONES
-    ==============================================================*/
+    ================================================================*/
 
     ordenarEvaluaciones(
-
         evaluaciones
-
     ) {
 
         return [
@@ -423,29 +455,20 @@ export default class MotorEvolucion {
             (a, b) => {
 
                 const fechaA =
-
                     this.obtenerFecha(
-
                         a
-
                     );
 
 
                 const fechaB =
-
                     this.obtenerFecha(
-
                         b
-
                     );
 
 
                 return (
-
                     fechaA -
-
                     fechaB
-
                 );
 
             }
@@ -455,25 +478,20 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
+    /*================================================================
         RENDIMIENTO GENERAL
-    ==============================================================*/
+    ================================================================*/
 
     analizarRendimientoGeneral(
-
         evaluaciones
-
     ) {
 
         const cantidad =
-
             evaluaciones.length;
 
 
         if (
-
             cantidad === 0
-
         ) {
 
             return {
@@ -524,156 +542,112 @@ export default class MotorEvolucion {
 
 
         for (
-
-            const evaluacion of
-
-                evaluaciones
-
+            const evaluacion
+            of evaluaciones
         ) {
 
             const metricas =
-
                 evaluacion.metricas ||
-
                 {};
 
 
             const comportamiento =
-
                 evaluacion.comportamientoRanking ||
-
                 {};
 
 
             const top10 =
-
                 this.numeroSeguro(
-
                     metricas.aciertosTop10
-
                 );
 
 
             const top20 =
-
                 this.numeroSeguro(
-
                     metricas.aciertosTop20
-
                 );
 
 
             const titulares =
-
                 this.numeroSeguro(
-
                     metricas.aciertosTitulares
-
                 );
 
 
             const suplentes =
-
                 this.numeroSeguro(
-
                     metricas.aciertosSuplentes
-
                 );
 
 
             const cobertura =
-
                 this.numeroSeguro(
-
                     comportamiento.cobertura
-
                 );
 
 
             const score =
-
                 this.numeroSeguro(
-
                     metricas.promedioScoreAciertos
-
                 );
 
 
             const confianza =
-
                 this.numeroSeguro(
-
                     metricas.promedioConfianzaAciertos
-
                 );
 
 
             sumaTop10 +=
-
                 top10;
 
 
             sumaTop20 +=
-
                 top20;
 
 
             sumaTitulares +=
-
                 titulares;
 
 
             sumaSuplentes +=
-
                 suplentes;
 
 
             sumaCobertura +=
-
                 cobertura;
 
 
             sumaScore +=
-
                 score;
 
 
             sumaConfianza +=
-
                 confianza;
 
 
-            /*
-             * Para comparar semanas utilizamos
-             * principalmente el rendimiento Top 10.
-             */
-
             if (
-
                 !mejorSemana ||
-
                 top10 >
-
-                    mejorSemana.aciertosTop10
-
+                mejorSemana.aciertosTop10
             ) {
 
                 mejorSemana = {
 
                     id:
-
                         evaluacion.id ||
+                        null,
 
+                    semana:
+                        evaluacion.semana
+                            ?.numero ??
                         null,
 
                     aciertosTop10:
-
                         top10,
 
                     fecha:
-
                         evaluacion.fechaEvaluacion ||
-
                         null
 
                 };
@@ -682,31 +656,27 @@ export default class MotorEvolucion {
 
 
             if (
-
                 !peorSemana ||
-
                 top10 <
-
-                    peorSemana.aciertosTop10
-
+                peorSemana.aciertosTop10
             ) {
 
                 peorSemana = {
 
                     id:
-
                         evaluacion.id ||
+                        null,
 
+                    semana:
+                        evaluacion.semana
+                            ?.numero ??
                         null,
 
                     aciertosTop10:
-
                         top10,
 
                     fecha:
-
                         evaluacion.fechaEvaluacion ||
-
                         null
 
                 };
@@ -719,7 +689,6 @@ export default class MotorEvolucion {
         return {
 
             cantidadEvaluaciones:
-
                 cantidad,
 
 
@@ -728,7 +697,6 @@ export default class MotorEvolucion {
                 this.redondear(
 
                     sumaTop10 /
-
                     cantidad,
 
                     6
@@ -741,7 +709,6 @@ export default class MotorEvolucion {
                 this.redondear(
 
                     sumaTop20 /
-
                     cantidad,
 
                     6
@@ -754,7 +721,6 @@ export default class MotorEvolucion {
                 this.redondear(
 
                     sumaTitulares /
-
                     cantidad,
 
                     6
@@ -767,7 +733,6 @@ export default class MotorEvolucion {
                 this.redondear(
 
                     sumaSuplentes /
-
                     cantidad,
 
                     6
@@ -780,7 +745,6 @@ export default class MotorEvolucion {
                 this.redondear(
 
                     sumaCobertura /
-
                     cantidad,
 
                     6
@@ -793,7 +757,6 @@ export default class MotorEvolucion {
                 this.redondear(
 
                     sumaScore /
-
                     cantidad,
 
                     6
@@ -806,7 +769,6 @@ export default class MotorEvolucion {
                 this.redondear(
 
                     sumaConfianza /
-
                     cantidad,
 
                     6
@@ -816,7 +778,6 @@ export default class MotorEvolucion {
 
             mejorSemana,
 
-
             peorSemana
 
         };
@@ -824,36 +785,47 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        CONSTRUIR PERIODOS
-    ==============================================================*/
+    /*================================================================
+        CONSTRUIR PERÍODOS
+    ================================================================*/
 
     construirPeriodos(
-
         evaluaciones,
-
         opciones = {}
-
     ) {
 
         const tamaño =
 
-            Number(
+            Math.max(
 
-                opciones.tamañoPeriodo ||
+                1,
 
-                this.configuracion.periodoReciente
+                Number(
+
+                    opciones.tamañoPeriodo ??
+
+                    this.configuracion
+                        .periodoReciente
+
+                ) || 1
 
             );
 
 
         const cantidadPeriodos =
 
-            Number(
+            Math.max(
 
-                opciones.cantidadPeriodos ||
+                1,
 
-                this.configuracion.cantidadPeriodos
+                Number(
+
+                    opciones.cantidadPeriodos ??
+
+                    this.configuracion
+                        .cantidadPeriodos
+
+                ) || 1
 
             );
 
@@ -861,13 +833,7 @@ export default class MotorEvolucion {
         const periodos = [];
 
 
-        /*
-         * Trabajamos desde el final hacia atrás.
-
-         */
-
         let fin =
-
             evaluaciones.length;
 
 
@@ -876,7 +842,6 @@ export default class MotorEvolucion {
             let i = 0;
 
             i < cantidadPeriodos &&
-
             fin > 0;
 
             i++
@@ -890,7 +855,6 @@ export default class MotorEvolucion {
                     0,
 
                     fin -
-
                     tamaño
 
                 );
@@ -910,58 +874,54 @@ export default class MotorEvolucion {
             periodos.unshift({
 
                 numero:
-
                     i + 1,
 
                 indiceInicio:
-
                     inicio,
 
                 indiceFin:
-
                     fin - 1,
 
                 cantidad:
-
                     grupo.length,
 
                 evaluaciones:
-
                     grupo
 
             });
 
 
             fin =
-
                 inicio;
 
         }
 
 
-        /*
-         * Reasignamos nombres cronológicos.
-
-         */
-
         periodos.forEach(
 
-            (periodo, indice) => {
+            (
+                periodo,
+                indice
+            ) => {
 
                 periodo.numero =
-
                     indice + 1;
 
 
                 periodo.nombre =
 
                     indice ===
-
                     periodos.length - 1
 
                         ? "Periodo actual"
 
                         : `Periodo ${indice + 1}`;
+
+
+                periodo.resumen =
+                    this.resumenPeriodo(
+                        periodo
+                    );
 
             }
 
@@ -973,20 +933,19 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        COMPARAR PERIODOS
-    ==============================================================*/
+    /*================================================================
+        COMPARAR PERÍODOS
+    ================================================================*/
 
     compararPeriodos(
-
         periodos
-
     ) {
 
         if (
-
+            !Array.isArray(
+                periodos
+            ) ||
             periodos.length < 2
-
         ) {
 
             return {
@@ -994,10 +953,12 @@ export default class MotorEvolucion {
                 disponible: false,
 
                 motivo:
-
                     "No hay suficientes períodos para realizar una comparación.",
 
-                variaciones: null
+                variaciones: null,
+
+                direccion:
+                    "sin_datos"
 
             };
 
@@ -1005,119 +966,137 @@ export default class MotorEvolucion {
 
 
         const anterior =
-
             this.resumenPeriodo(
 
                 periodos[
-
                     periodos.length - 2
-
                 ]
 
             );
 
 
         const actual =
-
             this.resumenPeriodo(
 
                 periodos[
-
                     periodos.length - 1
-
                 ]
 
             );
 
 
+        const variaciones = {
+
+            top10:
+
+                this.redondear(
+
+                    actual.promedioAciertosTop10 -
+
+                    anterior.promedioAciertosTop10,
+
+                    6
+
+                ),
+
+
+            top20:
+
+                this.redondear(
+
+                    actual.promedioAciertosTop20 -
+
+                    anterior.promedioAciertosTop20,
+
+                    6
+
+                ),
+
+
+            titulares:
+
+                this.redondear(
+
+                    actual.promedioAciertosTitulares -
+
+                    anterior.promedioAciertosTitulares,
+
+                    6
+
+                ),
+
+
+            suplentes:
+
+                this.redondear(
+
+                    actual.promedioAciertosSuplentes -
+
+                    anterior.promedioAciertosSuplentes,
+
+                    6
+
+                ),
+
+
+            cobertura:
+
+                this.redondear(
+
+                    actual.promedioCobertura -
+
+                    anterior.promedioCobertura,
+
+                    6
+
+                ),
+
+
+            scoreAciertos:
+
+                this.redondear(
+
+                    actual.promedioScoreAciertos -
+
+                    anterior.promedioScoreAciertos,
+
+                    6
+
+                ),
+
+
+            confianzaAciertos:
+
+                this.redondear(
+
+                    actual.promedioConfianzaAciertos -
+
+                    anterior.promedioConfianzaAciertos,
+
+                    6
+
+                )
+
+        };
+
+
         return {
 
-            disponible: true,
+            disponible:
+                true,
 
+            periodoAnterior:
+                anterior,
 
-            periodoAnterior: anterior,
+            periodoActual:
+                actual,
 
-
-            periodoActual: actual,
-
-
-            variaciones: {
-
-                top10:
-
-                    this.redondear(
-
-                        actual.promedioAciertosTop10 -
-
-                        anterior.promedioAciertosTop10,
-
-                        6
-
-                    ),
-
-
-                top20:
-
-                    this.redondear(
-
-                        actual.promedioAciertosTop20 -
-
-                        anterior.promedioAciertosTop20,
-
-                        6
-
-                    ),
-
-
-                titulares:
-
-                    this.redondear(
-
-                        actual.promedioAciertosTitulares -
-
-                        anterior.promedioAciertosTitulares,
-
-                        6
-
-                    ),
-
-
-                suplentes:
-
-                    this.redondear(
-
-                        actual.promedioAciertosSuplentes -
-
-                        anterior.promedioAciertosSuplentes,
-
-                        6
-
-                    ),
-
-
-                cobertura:
-
-                    this.redondear(
-
-                        actual.promedioCobertura -
-
-                        anterior.promedioCobertura,
-
-                        6
-
-                    )
-
-            },
-
+            variaciones,
 
             direccion:
-
                 this.determinarDireccion(
-
                     actual,
-
                     anterior
-
                 )
 
         };
@@ -1125,27 +1104,21 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        RESUMEN DE PERIODO
-    ==============================================================*/
+    /*================================================================
+        RESUMEN PERÍODO
+    ================================================================*/
 
     resumenPeriodo(
-
         periodo
-
     ) {
 
         const evaluaciones =
-
             periodo?.evaluaciones ||
-
             [];
 
 
         if (
-
             evaluaciones.length === 0
-
         ) {
 
             return {
@@ -1160,7 +1133,11 @@ export default class MotorEvolucion {
 
                 promedioAciertosSuplentes: 0,
 
-                promedioCobertura: 0
+                promedioCobertura: 0,
+
+                promedioScoreAciertos: 0,
+
+                promedioConfianzaAciertos: 0
 
             };
 
@@ -1177,78 +1154,71 @@ export default class MotorEvolucion {
 
         let cobertura = 0;
 
+        let scoreAciertos = 0;
+
+        let confianzaAciertos = 0;
+
 
         for (
-
-            const evaluacion of
-
-                evaluaciones
-
+            const evaluacion
+            of evaluaciones
         ) {
 
             const metricas =
-
                 evaluacion.metricas ||
-
                 {};
 
 
             const comportamiento =
-
                 evaluacion.comportamientoRanking ||
-
                 {};
 
 
             top10 +=
-
                 this.numeroSeguro(
-
                     metricas.aciertosTop10
-
                 );
 
 
             top20 +=
-
                 this.numeroSeguro(
-
                     metricas.aciertosTop20
-
                 );
 
 
             titulares +=
-
                 this.numeroSeguro(
-
                     metricas.aciertosTitulares
-
                 );
 
 
             suplentes +=
-
                 this.numeroSeguro(
-
                     metricas.aciertosSuplentes
-
                 );
 
 
             cobertura +=
-
                 this.numeroSeguro(
-
                     comportamiento.cobertura
+                );
 
+
+            scoreAciertos +=
+                this.numeroSeguro(
+                    metricas.promedioScoreAciertos
+                );
+
+
+            confianzaAciertos +=
+                this.numeroSeguro(
+                    metricas.promedioConfianzaAciertos
                 );
 
         }
 
 
         const cantidad =
-
             evaluaciones.length;
 
 
@@ -1260,65 +1230,63 @@ export default class MotorEvolucion {
             promedioAciertosTop10:
 
                 this.redondear(
-
                     top10 /
-
                     cantidad,
-
                     6
-
                 ),
 
 
             promedioAciertosTop20:
 
                 this.redondear(
-
                     top20 /
-
                     cantidad,
-
                     6
-
                 ),
 
 
             promedioAciertosTitulares:
 
                 this.redondear(
-
                     titulares /
-
                     cantidad,
-
                     6
-
                 ),
 
 
             promedioAciertosSuplentes:
 
                 this.redondear(
-
                     suplentes /
-
                     cantidad,
-
                     6
-
                 ),
 
 
             promedioCobertura:
 
                 this.redondear(
-
                     cobertura /
-
                     cantidad,
-
                     6
+                ),
 
+
+            promedioScoreAciertos:
+
+                this.redondear(
+                    scoreAciertos /
+                    cantidad,
+                    6
+                ),
+
+
+            promedioConfianzaAciertos:
+
+                this.redondear(
+                    confianzaAciertos /
+                    cantidad,
+                    6
                 )
 
         };
@@ -1326,31 +1294,42 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        DETERMINAR DIRECCIÓN
-    ==============================================================*/
+    /*================================================================
+        DETERMINAR DIRECCIÓN GENERAL
+    ================================================================*/
 
     determinarDireccion(
-
         actual,
-
         anterior
-
     ) {
 
         const variacion =
 
-            actual.promedioAciertosTop10 -
+            this.numeroSeguro(
+                actual.promedioAciertosTop10
+            ) -
 
-            anterior.promedioAciertosTop10;
+            this.numeroSeguro(
+                anterior.promedioAciertosTop10
+            );
+
+
+        const umbral =
+
+            Math.max(
+
+                0.5,
+
+                this.configuracion
+                    .umbralCambio /
+                10
+
+            );
 
 
         if (
-
             variacion >=
-
-            this.configuracion.umbralCambio
-
+            umbral
         ) {
 
             return "mejora";
@@ -1359,11 +1338,8 @@ export default class MotorEvolucion {
 
 
         if (
-
             variacion <=
-
-            -this.configuracion.umbralCambio
-
+            -umbral
         ) {
 
             return "deterioro";
@@ -1376,69 +1352,55 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        ANALIZAR TENDENCIAS
-    ==============================================================*/
+    /*================================================================
+        ANALIZAR TENDENCIAS GLOBALES
+    ================================================================*/
 
     analizarTendencias(
-
         evaluaciones
-
     ) {
 
         const series =
-
             this.crearSeries(
-
                 evaluaciones
-
             );
 
 
         return {
 
             top10:
-
                 this.analizarSerie(
-
                     series.top10
-
                 ),
-
 
             top20:
-
                 this.analizarSerie(
-
                     series.top20
-
                 ),
-
 
             titulares:
-
                 this.analizarSerie(
-
                     series.titulares
-
                 ),
-
 
             suplentes:
-
                 this.analizarSerie(
-
                     series.suplentes
-
                 ),
 
-
             cobertura:
-
                 this.analizarSerie(
-
                     series.cobertura
+                ),
 
+            scoreAciertos:
+                this.analizarSerie(
+                    series.scoreAciertos
+                ),
+
+            confianzaAciertos:
+                this.analizarSerie(
+                    series.confianzaAciertos
                 )
 
         };
@@ -1446,14 +1408,12 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        CREAR SERIES
-    ==============================================================*/
+    /*================================================================
+        CREAR SERIES GENERALES
+    ================================================================*/
 
     crearSeries(
-
         evaluaciones
-
     ) {
 
         const top10 = [];
@@ -1466,37 +1426,39 @@ export default class MotorEvolucion {
 
         const cobertura = [];
 
+        const scoreAciertos = [];
+
+        const confianzaAciertos = [];
+
 
         evaluaciones.forEach(
 
-            (evaluacion, indice) => {
+            (
+                evaluacion,
+                indice
+            ) => {
 
                 const metricas =
-
                     evaluacion.metricas ||
-
                     {};
 
 
                 const comportamiento =
-
                     evaluacion.comportamientoRanking ||
-
                     {};
+
+
+                const x =
+                    indice + 1;
 
 
                 top10.push({
 
-                    x:
-
-                        indice + 1,
+                    x,
 
                     y:
-
                         this.numeroSeguro(
-
                             metricas.aciertosTop10
-
                         )
 
                 });
@@ -1504,16 +1466,11 @@ export default class MotorEvolucion {
 
                 top20.push({
 
-                    x:
-
-                        indice + 1,
+                    x,
 
                     y:
-
                         this.numeroSeguro(
-
                             metricas.aciertosTop20
-
                         )
 
                 });
@@ -1521,16 +1478,11 @@ export default class MotorEvolucion {
 
                 titulares.push({
 
-                    x:
-
-                        indice + 1,
+                    x,
 
                     y:
-
                         this.numeroSeguro(
-
                             metricas.aciertosTitulares
-
                         )
 
                 });
@@ -1538,16 +1490,11 @@ export default class MotorEvolucion {
 
                 suplentes.push({
 
-                    x:
-
-                        indice + 1,
+                    x,
 
                     y:
-
                         this.numeroSeguro(
-
                             metricas.aciertosSuplentes
-
                         )
 
                 });
@@ -1555,16 +1502,35 @@ export default class MotorEvolucion {
 
                 cobertura.push({
 
-                    x:
-
-                        indice + 1,
+                    x,
 
                     y:
-
                         this.numeroSeguro(
-
                             comportamiento.cobertura
+                        )
 
+                });
+
+
+                scoreAciertos.push({
+
+                    x,
+
+                    y:
+                        this.numeroSeguro(
+                            metricas.promedioScoreAciertos
+                        )
+
+                });
+
+
+                confianzaAciertos.push({
+
+                    x,
+
+                    y:
+                        this.numeroSeguro(
+                            metricas.promedioConfianzaAciertos
                         )
 
                 });
@@ -1584,33 +1550,30 @@ export default class MotorEvolucion {
 
             suplentes,
 
-            cobertura
+            cobertura,
+
+            scoreAciertos,
+
+            confianzaAciertos
 
         };
 
     }
 
 
-    /*==============================================================
+    /*================================================================
         ANALIZAR SERIE
-    ==============================================================*/
+    ================================================================*/
 
     analizarSerie(
-
         serie
-
     ) {
 
         if (
-
             !Array.isArray(
-
                 serie
-
             ) ||
-
             serie.length === 0
-
         ) {
 
             return {
@@ -1625,7 +1588,8 @@ export default class MotorEvolucion {
 
                 pendiente: 0,
 
-                tendencia: "sin_datos"
+                tendencia:
+                    "sin_datos"
 
             };
 
@@ -1633,93 +1597,62 @@ export default class MotorEvolucion {
 
 
         const valores =
-
             serie.map(
 
                 punto =>
-
-                    punto.y
+                    this.numeroSeguro(
+                        punto.y
+                    )
 
             );
 
 
         const promedio =
-
-            valores.reduce(
-
-                (
-
-                    suma,
-
-                    valor
-
-                ) =>
-
-                    suma + valor,
-
-                0
-
-            ) /
-
-            valores.length;
+            this.calcularPromedio(
+                valores
+            );
 
 
         const minimo =
-
             Math.min(
-
                 ...valores
-
             );
 
 
         const maximo =
-
             Math.max(
-
                 ...valores
-
             );
 
 
         const pendiente =
-
             this.calcularPendiente(
-
                 serie
-
             );
 
 
         let tendencia =
-
             "estable";
 
 
         if (
-
             pendiente >
-
-            0.05
-
+            this.configuracion
+                .pendienteMinimaMotor
         ) {
 
             tendencia =
-
                 "ascendente";
 
         }
 
         else if (
-
             pendiente <
-
-            -0.05
-
+            -this.configuracion
+                .pendienteMinimaMotor
         ) {
 
             tendencia =
-
                 "descendente";
 
         }
@@ -1728,17 +1661,12 @@ export default class MotorEvolucion {
         return {
 
             cantidad:
-
                 serie.length,
 
             promedio:
-
                 this.redondear(
-
                     promedio,
-
                     6
-
                 ),
 
             minimo,
@@ -1746,13 +1674,9 @@ export default class MotorEvolucion {
             maximo,
 
             pendiente:
-
                 this.redondear(
-
                     pendiente,
-
                     6
-
                 ),
 
             tendencia
@@ -1762,25 +1686,26 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
+    /*================================================================
         CALCULAR PENDIENTE
-    ==============================================================*/
+    ================================================================*/
 
     calcularPendiente(
-
         serie
-
     ) {
 
         const n =
+            Array.isArray(
+                serie
+            )
 
-            serie.length;
+                ? serie.length
+
+                : 0;
 
 
         if (
-
             n < 2
-
         ) {
 
             return 0;
@@ -1798,38 +1723,35 @@ export default class MotorEvolucion {
 
 
         for (
-
-            const punto of serie
-
+            const punto
+            of serie
         ) {
 
             const x =
-
-                punto.x;
+                this.numeroSeguro(
+                    punto.x
+                );
 
 
             const y =
-
-                punto.y;
+                this.numeroSeguro(
+                    punto.y
+                );
 
 
             sumaX +=
-
                 x;
 
 
             sumaY +=
-
                 y;
 
 
             sumaXY +=
-
                 x * y;
 
 
             sumaX2 +=
-
                 x * x;
 
         }
@@ -1838,26 +1760,18 @@ export default class MotorEvolucion {
         const denominador =
 
             (
-
                 n *
-
                 sumaX2
-
             ) -
 
             (
-
                 sumaX *
-
                 sumaX
-
             );
 
 
         if (
-
             denominador === 0
-
         ) {
 
             return 0;
@@ -1868,155 +1782,314 @@ export default class MotorEvolucion {
         return (
 
             (
-
                 n *
-
                 sumaXY
-
             ) -
 
             (
-
                 sumaX *
-
                 sumaY
-
             )
 
         ) /
-
         denominador;
 
     }
 
 
-    /*==============================================================
+    /*================================================================
+        OBTENER VENTANAS DE COMPARACIÓN
+    ================================================================*/
+
+    obtenerVentanasComparacion(
+        historial
+    ) {
+
+        const total =
+
+            Array.isArray(
+                historial
+            )
+
+                ? historial.length
+
+                : 0;
+
+
+        /*
+         * Una sola evaluación:
+         *
+         * todavía no existe comparación temporal.
+         */
+
+        if (
+            total <= 1
+        ) {
+
+            return {
+
+                tamañoVentana:
+                    total,
+
+                reciente:
+
+                    [
+                        ...historial
+                    ],
+
+                anterior:
+                    [],
+
+                disponible:
+                    false
+
+            };
+
+        }
+
+
+        /*
+         * Determinamos dinámicamente el tamaño.
+         *
+         * Ejemplos:
+         *
+         * 5 evaluaciones:
+         *
+         * tamaño = 2
+         *
+         * anterior:
+         * evaluaciones 2 y 3
+         *
+         * reciente:
+         * evaluaciones 4 y 5
+         *
+         *
+         * 20 evaluaciones:
+         *
+         * tamaño = 10
+         *
+         * anterior:
+         * 1-10
+         *
+         * reciente:
+         * 11-20
+         */
+
+        const mitadDisponible =
+
+            Math.floor(
+                total /
+                2
+            );
+
+
+        const tamañoVentana =
+
+            Math.max(
+
+                1,
+
+                Math.min(
+
+                    this.configuracion
+                        .periodoReciente,
+
+                    mitadDisponible
+
+                )
+
+            );
+
+
+        const inicioReciente =
+
+            total -
+            tamañoVentana;
+
+
+        const finAnterior =
+
+            inicioReciente;
+
+
+        const inicioAnterior =
+
+            Math.max(
+
+                0,
+
+                finAnterior -
+                tamañoVentana
+
+            );
+
+
+        const reciente =
+
+            historial.slice(
+
+                inicioReciente
+
+            );
+
+
+        const anterior =
+
+            historial.slice(
+
+                inicioAnterior,
+
+                finAnterior
+
+            );
+
+
+        return {
+
+            tamañoVentana,
+
+            reciente,
+
+            anterior,
+
+            disponible:
+
+                reciente.length > 0 &&
+
+                anterior.length > 0
+
+        };
+
+    }
+
+
+    /*================================================================
         EVOLUCIÓN DE MOTORES
-    ==============================================================*/
+    ================================================================*/
 
     analizarEvolucionMotores(
-
         evaluaciones
-
     ) {
 
         const datosMotores = {};
 
 
+        /*------------------------------------------------------------
+            CONSTRUIR HISTORIAL
+        ------------------------------------------------------------*/
+
         for (
-
-            const evaluacion of
-
-                evaluaciones
-
+            const evaluacion
+            of evaluaciones
         ) {
 
             const rendimiento =
-
                 evaluacion.rendimientoMotores ||
-
                 {};
 
 
             const motores =
-
                 rendimiento.motores ||
-
                 {};
 
 
             for (
-
-                const clave in motores
-
+                const clave
+                in motores
             ) {
 
                 const motor =
-
                     motores[clave];
 
 
                 if (
-
                     !datosMotores[clave]
-
                 ) {
 
                     datosMotores[clave] = {
 
                         motor:
-
                             clave,
 
-                        historial: []
+                        historial:
+                            []
 
                     };
 
                 }
 
 
-                datosMotores[clave].historial.push({
+                datosMotores[
+                    clave
+                ].historial.push({
 
                     fecha:
-
                         evaluacion.fechaEvaluacion ||
+                        null,
 
+                    semana:
+                        evaluacion.semana
+                            ?.numero ??
                         null,
 
                     aciertos:
 
                         this.numeroSeguro(
-
                             motor.aciertos
-
                         ),
 
                     apariciones:
 
                         this.numeroSeguro(
-
                             motor.apariciones
-
                         ),
 
                     tasaAcierto:
 
                         this.numeroSeguro(
-
                             motor.tasaAcierto
-
                         ),
 
                     promedioScore:
 
                         this.numeroSeguro(
-
                             motor.promedioScore
-
                         ),
 
                     promedioScoreAciertos:
 
                         this.numeroSeguro(
-
                             motor.promedioScoreAciertos
-
                         ),
 
                     promedioConfianza:
 
                         this.numeroSeguro(
-
                             motor.promedioConfianza
-
                         ),
 
                     promedioConfianzaAciertos:
 
                         this.numeroSeguro(
-
                             motor.promedioConfianzaAciertos
+                        ),
 
+                    ventajaScore:
+
+                        this.numeroSeguro(
+                            motor.ventajaScore
+                        ),
+
+                    ventajaConfianza:
+
+                        this.numeroSeguro(
+                            motor.ventajaConfianza
+                        ),
+
+                    indiceDiscriminacion:
+
+                        this.numeroSeguro(
+                            motor.indiceDiscriminacion
                         )
 
                 });
@@ -2026,312 +2099,1126 @@ export default class MotorEvolucion {
         }
 
 
-        const resultado = {};
+        const porMotor = {};
 
+
+        /*------------------------------------------------------------
+            ANALIZAR CADA MOTOR
+        ------------------------------------------------------------*/
 
         for (
-
-            const clave in datosMotores
-
+            const clave
+            in datosMotores
         ) {
 
-            const datos =
+            const historial =
+                datosMotores[
+                    clave
+                ].historial;
 
-                datosMotores[clave];
 
+            /*--------------------------------------------------------
+                SERIES
+            --------------------------------------------------------*/
 
             const serieTasa =
+                this.crearSerieDesdeHistorial(
 
-                datos.historial.map(
+                    historial,
 
-                    (item, indice) => ({
-
-                        x:
-
-                            indice + 1,
-
-                        y:
-
-                            item.tasaAcierto
-
-                    })
+                    "tasaAcierto"
 
                 );
 
 
             const serieAciertos =
+                this.crearSerieDesdeHistorial(
 
-                datos.historial.map(
+                    historial,
 
-                    (item, indice) => ({
-
-                        x:
-
-                            indice + 1,
-
-                        y:
-
-                            item.aciertos
-
-                    })
+                    "aciertos"
 
                 );
 
 
+            const serieVentajaScore =
+                this.crearSerieDesdeHistorial(
+
+                    historial,
+
+                    "ventajaScore"
+
+                );
+
+
+            const serieVentajaConfianza =
+                this.crearSerieDesdeHistorial(
+
+                    historial,
+
+                    "ventajaConfianza"
+
+                );
+
+
+            const serieIndice =
+                this.crearSerieDesdeHistorial(
+
+                    historial,
+
+                    "indiceDiscriminacion"
+
+                );
+
+
+            /*--------------------------------------------------------
+                TENDENCIAS
+            --------------------------------------------------------*/
+
             const tendenciaTasa =
-
                 this.analizarSerie(
-
                     serieTasa
-
                 );
 
 
             const tendenciaAciertos =
-
                 this.analizarSerie(
-
                     serieAciertos
+                );
+
+
+            const tendenciaVentajaScore =
+                this.analizarSerie(
+                    serieVentajaScore
+                );
+
+
+            const tendenciaVentajaConfianza =
+                this.analizarSerie(
+                    serieVentajaConfianza
+                );
+
+
+            const tendenciaIndiceDiscriminacion =
+                this.analizarSerie(
+                    serieIndice
+                );
+
+
+            /*--------------------------------------------------------
+                PROMEDIOS HISTÓRICOS
+            --------------------------------------------------------*/
+
+            const promedioTasaAcierto =
+                this.calcularPromedio(
+
+                    historial.map(
+                        item =>
+                            item.tasaAcierto
+                    )
 
                 );
 
 
-            const promedioTasa =
-
+            const promedioVentajaScore =
                 this.calcularPromedio(
 
-                    datos.historial.map(
-
+                    historial.map(
                         item =>
-
-                            item.tasaAcierto
-
+                            item.ventajaScore
                     )
 
+                );
+
+
+            const promedioVentajaConfianza =
+                this.calcularPromedio(
+
+                    historial.map(
+                        item =>
+                            item.ventajaConfianza
+                    )
+
+                );
+
+
+            const promedioIndiceDiscriminacion =
+                this.calcularPromedio(
+
+                    historial.map(
+                        item =>
+                            item.indiceDiscriminacion
+                    )
+
+                );
+
+
+            /*--------------------------------------------------------
+                VENTANAS RECIENTE / ANTERIOR
+            --------------------------------------------------------*/
+
+            const ventanas =
+                this.obtenerVentanasComparacion(
+                    historial
                 );
 
 
             const reciente =
-
-                this.obtenerUltimos(
-
-                    datos.historial,
-
-                    this.configuracion.periodoReciente
-
-                );
+                ventanas.reciente;
 
 
-            const promedioReciente =
+            const anterior =
+                ventanas.anterior;
 
+
+            /*--------------------------------------------------------
+                ÍNDICE DE DISCRIMINACIÓN
+            --------------------------------------------------------*/
+
+            const promedioIndiceReciente =
                 this.calcularPromedio(
 
                     reciente.map(
-
                         item =>
-
-                            item.tasaAcierto
-
+                            item.indiceDiscriminacion
                     )
 
                 );
 
 
-            const promedioAnterior =
+            const promedioIndiceAnterior =
 
-                this.calcularPromedio(
+                anterior.length > 0
 
-                    datos.historial
+                    ? this.calcularPromedio(
 
-                        .slice(
-
-                            0,
-
-                            Math.max(
-
-                                0,
-
-                                datos.historial.length -
-
-                                reciente.length
-
-                            )
-
-                        )
-
-                        .map(
-
+                        anterior.map(
                             item =>
-
-                                item.tasaAcierto
-
+                                item.indiceDiscriminacion
                         )
 
-                );
+                    )
+
+                    : promedioIndiceDiscriminacion;
 
 
-            const variacionReciente =
-
+            const variacionIndiceReciente =
                 this.redondear(
 
-                    promedioReciente -
+                    promedioIndiceReciente -
 
-                    promedioAnterior,
+                    promedioIndiceAnterior,
 
                     6
 
                 );
 
 
-            let estado =
+            /*--------------------------------------------------------
+                VENTAJA SCORE
+            --------------------------------------------------------*/
 
-                "estable";
+            const promedioVentajaScoreReciente =
+                this.calcularPromedio(
 
+                    reciente.map(
+                        item =>
+                            item.ventajaScore
+                    )
 
-            if (
-
-                variacionReciente >=
-
-                this.configuracion.umbralCambio
-
-            ) {
-
-                estado =
-
-                    "mejorando";
-
-            }
-
-            else if (
-
-                variacionReciente <=
-
-                -this.configuracion.umbralCambio
-
-            ) {
-
-                estado =
-
-                    "empeorando";
-
-            }
+                );
 
 
-            resultado[clave] = {
+            const promedioVentajaScoreAnterior =
+
+                anterior.length > 0
+
+                    ? this.calcularPromedio(
+
+                        anterior.map(
+                            item =>
+                                item.ventajaScore
+                        )
+
+                    )
+
+                    : promedioVentajaScore;
+
+
+            const variacionVentajaScore =
+                this.redondear(
+
+                    promedioVentajaScoreReciente -
+
+                    promedioVentajaScoreAnterior,
+
+                    6
+
+                );
+
+
+            /*--------------------------------------------------------
+                VENTAJA CONFIANZA
+            --------------------------------------------------------*/
+
+            const promedioVentajaConfianzaReciente =
+                this.calcularPromedio(
+
+                    reciente.map(
+                        item =>
+                            item.ventajaConfianza
+                    )
+
+                );
+
+
+            const promedioVentajaConfianzaAnterior =
+
+                anterior.length > 0
+
+                    ? this.calcularPromedio(
+
+                        anterior.map(
+                            item =>
+                                item.ventajaConfianza
+                        )
+
+                    )
+
+                    : promedioVentajaConfianza;
+
+
+            const variacionVentajaConfianza =
+                this.redondear(
+
+                    promedioVentajaConfianzaReciente -
+
+                    promedioVentajaConfianzaAnterior,
+
+                    6
+
+                );
+
+
+            /*--------------------------------------------------------
+                ESTADO DEL MOTOR
+            --------------------------------------------------------*/
+
+            const estado =
+                this.clasificarEstadoMotor({
+
+                    cantidadEvaluaciones:
+                        historial.length,
+
+                    promedioHistorico:
+                        promedioIndiceDiscriminacion,
+
+                    promedioReciente:
+                        promedioIndiceReciente,
+
+                    promedioAnterior:
+                        promedioIndiceAnterior,
+
+                    variacionReciente:
+                        variacionIndiceReciente,
+
+                    tendenciaIndice:
+                        tendenciaIndiceDiscriminacion,
+
+                    comparacionDisponible:
+                        ventanas.disponible
+
+                });
+
+
+            /*--------------------------------------------------------
+                CONSISTENCIA
+            --------------------------------------------------------*/
+
+            const consistencia =
+                this.calcularConsistencia(
+
+                    historial.map(
+                        item =>
+                            item.indiceDiscriminacion
+                    )
+
+                );
+
+
+            const consistente =
+
+                historial.length >= 2 &&
+
+                consistencia >= 70;
+
+
+            porMotor[clave] = {
 
                 motor:
-
                     clave,
 
                 cantidadEvaluaciones:
+                    historial.length,
 
-                    datos.historial.length,
 
                 promedioTasaAcierto:
 
                     this.redondear(
-
-                        promedioTasa,
-
+                        promedioTasaAcierto,
                         6
-
                     ),
 
-                promedioTasaReciente:
-
-                    this.redondear(
-
-                        promedioReciente,
-
-                        6
-
-                    ),
-
-                promedioTasaAnterior:
-
-                    this.redondear(
-
-                        promedioAnterior,
-
-                        6
-
-                    ),
-
-                variacionReciente,
-
-                estado,
 
                 tendenciaTasa,
 
                 tendenciaAciertos,
 
-                historial:
 
-                    datos.historial
+                promedioVentajaScore:
+
+                    this.redondear(
+                        promedioVentajaScore,
+                        6
+                    ),
+
+
+                promedioVentajaConfianza:
+
+                    this.redondear(
+                        promedioVentajaConfianza,
+                        6
+                    ),
+
+
+                promedioIndiceDiscriminacion:
+
+                    this.redondear(
+                        promedioIndiceDiscriminacion,
+                        6
+                    ),
+
+
+                promedioIndiceReciente:
+
+                    this.redondear(
+                        promedioIndiceReciente,
+                        6
+                    ),
+
+
+                promedioIndiceAnterior:
+
+                    this.redondear(
+                        promedioIndiceAnterior,
+                        6
+                    ),
+
+
+                variacionIndiceReciente,
+
+
+                promedioVentajaScoreReciente:
+
+                    this.redondear(
+                        promedioVentajaScoreReciente,
+                        6
+                    ),
+
+
+                promedioVentajaScoreAnterior:
+
+                    this.redondear(
+                        promedioVentajaScoreAnterior,
+                        6
+                    ),
+
+
+                variacionVentajaScore,
+
+
+                promedioVentajaConfianzaReciente:
+
+                    this.redondear(
+                        promedioVentajaConfianzaReciente,
+                        6
+                    ),
+
+
+                promedioVentajaConfianzaAnterior:
+
+                    this.redondear(
+                        promedioVentajaConfianzaAnterior,
+                        6
+                    ),
+
+
+                variacionVentajaConfianza,
+
+
+                tendenciaVentajaScore,
+
+                tendenciaVentajaConfianza,
+
+                tendenciaIndiceDiscriminacion,
+
+
+                ventanaComparacion: {
+
+                    disponible:
+                        ventanas.disponible,
+
+                    tamaño:
+                        ventanas.tamañoVentana,
+
+                    cantidadAnterior:
+                        anterior.length,
+
+                    cantidadReciente:
+                        reciente.length
+
+                },
+
+
+                estado,
+
+
+                consistencia:
+
+                    this.redondear(
+                        consistencia,
+                        4
+                    ),
+
+
+                consistente,
+
+
+                historial
 
             };
 
         }
 
 
-        return resultado;
+        /*------------------------------------------------------------
+            RANKING HISTÓRICO
+        ------------------------------------------------------------*/
+
+        const rankingMotores =
+            Object.values(
+                porMotor
+            ).sort(
+
+                (a, b) => {
+
+                    if (
+                        b.promedioIndiceDiscriminacion !==
+                        a.promedioIndiceDiscriminacion
+                    ) {
+
+                        return (
+
+                            b.promedioIndiceDiscriminacion -
+
+                            a.promedioIndiceDiscriminacion
+
+                        );
+
+                    }
+
+
+                    if (
+                        b.promedioIndiceReciente !==
+                        a.promedioIndiceReciente
+                    ) {
+
+                        return (
+
+                            b.promedioIndiceReciente -
+
+                            a.promedioIndiceReciente
+
+                        );
+
+                    }
+
+
+                    if (
+                        b.promedioVentajaScore !==
+                        a.promedioVentajaScore
+                    ) {
+
+                        return (
+
+                            b.promedioVentajaScore -
+
+                            a.promedioVentajaScore
+
+                        );
+
+                    }
+
+
+                    return String(
+                        a.motor
+                    ).localeCompare(
+                        String(
+                            b.motor
+                        )
+                    );
+
+                }
+
+            );
+
+
+        rankingMotores.forEach(
+
+            (
+                motor,
+                indice
+            ) => {
+
+                motor.posicionEvolutiva =
+                    indice + 1;
+
+            }
+
+        );
+
+
+        const mejorMotorHistorico =
+
+            rankingMotores.length > 0
+
+                ? rankingMotores[0]
+                    .motor
+
+                : null;
+
+
+        /*------------------------------------------------------------
+            MEJOR MOTOR RECIENTE
+        ------------------------------------------------------------*/
+
+        const rankingReciente =
+            [
+
+                ...rankingMotores
+
+            ].sort(
+
+                (a, b) => {
+
+                    if (
+                        b.promedioIndiceReciente !==
+                        a.promedioIndiceReciente
+                    ) {
+
+                        return (
+
+                            b.promedioIndiceReciente -
+
+                            a.promedioIndiceReciente
+
+                        );
+
+                    }
+
+
+                    return (
+
+                        b.promedioVentajaScoreReciente -
+
+                        a.promedioVentajaScoreReciente
+
+                    );
+
+                }
+
+            );
+
+
+        const mejorMotorReciente =
+
+            rankingReciente.length > 0
+
+                ? rankingReciente[0]
+                    .motor
+
+                : null;
+
+
+        /*------------------------------------------------------------
+            LISTAS DERIVADAS
+        ------------------------------------------------------------*/
+
+        const motoresConsistentes =
+            rankingMotores
+
+                .filter(
+
+                    motor =>
+                        motor.consistente
+
+                )
+
+                .map(
+
+                    motor =>
+                        motor.motor
+
+                );
+
+
+        const motoresEnMejora =
+            rankingMotores
+
+                .filter(
+
+                    motor =>
+                        motor.estado ===
+                        "mejorando"
+
+                )
+
+                .map(
+
+                    motor =>
+                        motor.motor
+
+                );
+
+
+        const motoresEnDeterioro =
+            rankingMotores
+
+                .filter(
+
+                    motor =>
+                        motor.estado ===
+                        "empeorando"
+
+                )
+
+                .map(
+
+                    motor =>
+                        motor.motor
+
+                );
+
+
+        return {
+
+            porMotor,
+
+            rankingMotores,
+
+            mejorMotorHistorico,
+
+            mejorMotorReciente,
+
+            motoresConsistentes,
+
+            motoresEnMejora,
+
+            motoresEnDeterioro
+
+        };
 
     }
 
 
-    /*==============================================================
+    /*================================================================
+        CREAR SERIE DESDE HISTORIAL
+    ================================================================*/
+
+    crearSerieDesdeHistorial(
+        historial,
+        propiedad
+    ) {
+
+        if (
+            !Array.isArray(
+                historial
+            )
+        ) {
+
+            return [];
+
+        }
+
+
+        return historial.map(
+
+            (
+                item,
+                indice
+            ) => ({
+
+                x:
+                    indice + 1,
+
+                y:
+                    this.numeroSeguro(
+                        item[propiedad]
+                    )
+
+            })
+
+        );
+
+    }
+
+
+    /*================================================================
+        CLASIFICAR ESTADO DEL MOTOR
+    ================================================================*/
+
+    clasificarEstadoMotor({
+        cantidadEvaluaciones,
+        promedioHistorico,
+        promedioReciente,
+        promedioAnterior,
+        variacionReciente,
+        tendenciaIndice,
+        comparacionDisponible
+    }) {
+
+        const umbral =
+            this.configuracion
+                .umbralDiscriminacion;
+
+
+        /*
+         * Primero priorizamos comparación
+         * entre ventana anterior y reciente.
+         */
+
+        if (
+            comparacionDisponible
+        ) {
+
+            if (
+                variacionReciente >=
+                umbral
+            ) {
+
+                return "mejorando";
+
+            }
+
+
+            if (
+                variacionReciente <=
+                -umbral
+            ) {
+
+                return "empeorando";
+
+            }
+
+        }
+
+
+        /*
+         * Si la diferencia reciente no alcanza
+         * el umbral, utilizamos la pendiente
+         * como señal secundaria.
+         */
+
+        if (
+            cantidadEvaluaciones >=
+            this.configuracion
+                .minimoEvaluacionesTendencia
+        ) {
+
+            const pendiente =
+                this.numeroSeguro(
+                    tendenciaIndice
+                        ?.pendiente
+                );
+
+
+            if (
+                pendiente >
+                this.configuracion
+                    .pendienteMinimaMotor
+            ) {
+
+                return "tendencia_positiva";
+
+            }
+
+
+            if (
+                pendiente <
+                -this.configuracion
+                    .pendienteMinimaMotor
+            ) {
+
+                return "tendencia_negativa";
+
+            }
+
+        }
+
+
+        /*
+         * Señal históricamente negativa.
+         */
+
+        if (
+            promedioHistorico <
+            -this.configuracion
+                .minimoIndicePositivo
+        ) {
+
+            return "debil_historico";
+
+        }
+
+
+        /*
+         * Señal reciente negativa.
+         */
+
+        if (
+            promedioReciente <
+            -this.configuracion
+                .minimoIndicePositivo
+        ) {
+
+            return "debil_reciente";
+
+        }
+
+
+        return "estable";
+
+    }
+
+
+    /*================================================================
+        CONSISTENCIA
+    ================================================================*/
+
+    calcularConsistencia(
+        valores
+    ) {
+
+        if (
+            !Array.isArray(
+                valores
+            ) ||
+            valores.length === 0
+        ) {
+
+            return 0;
+
+        }
+
+
+        if (
+            valores.length === 1
+        ) {
+
+            return 50;
+
+        }
+
+
+        const promedio =
+            this.calcularPromedio(
+                valores
+            );
+
+
+        const desviacion =
+            this.calcularDesviacionEstandar(
+                valores
+            );
+
+
+        const estabilidad =
+
+            Math.max(
+
+                0,
+
+                100 -
+                desviacion * 5
+
+            );
+
+
+        const fuerzaMedia =
+
+            Math.min(
+
+                100,
+
+                Math.abs(
+                    promedio
+                ) * 10
+
+            );
+
+
+        return this.limitar(
+
+            (
+                estabilidad *
+                0.70
+            ) +
+
+            (
+                fuerzaMedia *
+                0.30
+            ),
+
+            0,
+
+            100
+
+        );
+
+    }
+
+
+    /*================================================================
+        DESVIACIÓN ESTÁNDAR
+    ================================================================*/
+
+    calcularDesviacionEstandar(
+        valores
+    ) {
+
+        if (
+            !Array.isArray(
+                valores
+            ) ||
+            valores.length === 0
+        ) {
+
+            return 0;
+
+        }
+
+
+        const validos =
+            valores
+
+                .map(Number)
+
+                .filter(
+                    Number.isFinite
+                );
+
+
+        if (
+            validos.length === 0
+        ) {
+
+            return 0;
+
+        }
+
+
+        const promedio =
+            validos.reduce(
+
+                (
+                    suma,
+                    valor
+                ) =>
+                    suma + valor,
+
+                0
+
+            ) /
+            validos.length;
+
+
+        const varianza =
+            validos.reduce(
+
+                (
+                    acumulado,
+                    valor
+                ) => {
+
+                    const diferencia =
+                        valor -
+                        promedio;
+
+
+                    return (
+
+                        acumulado +
+
+                        diferencia *
+                        diferencia
+
+                    );
+
+                },
+
+                0
+
+            ) /
+            validos.length;
+
+
+        return Math.sqrt(
+            varianza
+        );
+
+    }
+
+
+    /*================================================================
         DETECTAR CAMBIOS
-    ==============================================================*/
+    ================================================================*/
 
     detectarCambios(
-
         evaluaciones,
-
-        motores,
-
+        evolucionMotores,
         tendencias
-
     ) {
 
         const cambios = [];
 
 
-        /*
-         * Cambios generales.
-
-         */
+        /*------------------------------------------------------------
+            CAMBIOS GLOBALES
+        ------------------------------------------------------------*/
 
         for (
-
-            const clave in tendencias
-
+            const clave
+            in tendencias
         ) {
 
             const tendencia =
-
                 tendencias[clave];
 
 
             if (
-
                 tendencia.tendencia ===
-
                 "ascendente"
-
             ) {
 
                 cambios.push({
 
                     tipo:
-
                         "mejora_global",
 
                     indicador:
-
                         clave,
 
                     magnitud:
-
                         tendencia.pendiente,
 
                     descripcion:
@@ -2344,25 +3231,19 @@ export default class MotorEvolucion {
 
 
             if (
-
                 tendencia.tendencia ===
-
                 "descendente"
-
             ) {
 
                 cambios.push({
 
                     tipo:
-
                         "deterioro_global",
 
                     indicador:
-
                         clave,
 
                     magnitud:
-
                         tendencia.pendiente,
 
                     descripcion:
@@ -2376,78 +3257,198 @@ export default class MotorEvolucion {
         }
 
 
-        /*
-         * Cambios por motor.
+        /*------------------------------------------------------------
+            CAMBIOS ESPECÍFICOS POR MOTOR
+        ------------------------------------------------------------*/
 
-         */
+        const motores =
+            evolucionMotores
+                .porMotor ||
+            {};
+
 
         for (
-
-            const clave in motores
-
+            const clave
+            in motores
         ) {
 
             const motor =
-
                 motores[clave];
 
 
+            /*
+             * Mejora confirmada por comparación
+             * reciente contra anterior.
+             */
+
             if (
-
                 motor.estado ===
-
                 "mejorando"
-
             ) {
 
                 cambios.push({
 
                     tipo:
-
                         "motor_mejorando",
 
                     motor:
-
                         clave,
 
                     variacion:
+                        motor.variacionIndiceReciente,
 
-                        motor.variacionReciente,
+                    indiceHistorico:
+                        motor.promedioIndiceDiscriminacion,
+
+                    indiceAnterior:
+                        motor.promedioIndiceAnterior,
+
+                    indiceReciente:
+                        motor.promedioIndiceReciente,
+
+                    pendiente:
+                        motor
+                            .tendenciaIndiceDiscriminacion
+                            .pendiente,
 
                     descripcion:
 
-                        `El motor ${clave} presenta una mejora reciente en su rendimiento descriptivo.`
+                        `El motor ${clave} presenta una mejora reciente de su capacidad discriminatoria.`
 
                 });
 
             }
 
 
+            /*
+             * Deterioro confirmado.
+             */
+
             if (
-
                 motor.estado ===
-
                 "empeorando"
-
             ) {
 
                 cambios.push({
 
                     tipo:
-
                         "motor_empeorando",
 
                     motor:
-
                         clave,
 
                     variacion:
+                        motor.variacionIndiceReciente,
 
-                        motor.variacionReciente,
+                    indiceHistorico:
+                        motor.promedioIndiceDiscriminacion,
+
+                    indiceAnterior:
+                        motor.promedioIndiceAnterior,
+
+                    indiceReciente:
+                        motor.promedioIndiceReciente,
+
+                    pendiente:
+                        motor
+                            .tendenciaIndiceDiscriminacion
+                            .pendiente,
 
                     descripcion:
 
-                        `El motor ${clave} presenta un deterioro reciente en su rendimiento descriptivo.`
+                        `El motor ${clave} presenta un deterioro reciente de su capacidad discriminatoria.`
+
+                });
+
+            }
+
+
+            /*
+             * Tendencia positiva todavía no suficientemente
+             * fuerte como para clasificar "mejorando".
+             */
+
+            if (
+                motor.estado ===
+                "tendencia_positiva"
+            ) {
+
+                cambios.push({
+
+                    tipo:
+                        "motor_tendencia_positiva",
+
+                    motor:
+                        clave,
+
+                    pendiente:
+                        motor
+                            .tendenciaIndiceDiscriminacion
+                            .pendiente,
+
+                    descripcion:
+
+                        `El motor ${clave} mantiene una tendencia temporal positiva.`
+
+                });
+
+            }
+
+
+            /*
+             * Tendencia negativa leve.
+             */
+
+            if (
+                motor.estado ===
+                "tendencia_negativa"
+            ) {
+
+                cambios.push({
+
+                    tipo:
+                        "motor_tendencia_negativa",
+
+                    motor:
+                        clave,
+
+                    pendiente:
+                        motor
+                            .tendenciaIndiceDiscriminacion
+                            .pendiente,
+
+                    descripcion:
+
+                        `El motor ${clave} mantiene una tendencia temporal negativa.`
+
+                });
+
+            }
+
+
+            /*
+             * Comportamiento históricamente negativo.
+             */
+
+            if (
+                motor.estado ===
+                "debil_historico"
+            ) {
+
+                cambios.push({
+
+                    tipo:
+                        "motor_debil_historico",
+
+                    motor:
+                        clave,
+
+                    indice:
+                        motor.promedioIndiceDiscriminacion,
+
+                    descripcion:
+
+                        `El motor ${clave} mantiene un índice discriminatorio histórico negativo.`
 
                 });
 
@@ -2456,11 +3457,9 @@ export default class MotorEvolucion {
         }
 
 
-        /*
-         * Detectamos cambios fuertes entre evaluaciones
-         * consecutivas.
-
-         */
+        /*------------------------------------------------------------
+            CAMBIOS BRUSCOS TOP 10
+        ------------------------------------------------------------*/
 
         for (
 
@@ -2473,70 +3472,65 @@ export default class MotorEvolucion {
         ) {
 
             const anterior =
-
-                evaluaciones[i - 1];
+                evaluaciones[
+                    i - 1
+                ];
 
 
             const actual =
-
                 evaluaciones[i];
 
 
             const anteriorTop10 =
-
                 this.obtenerAciertosTop10(
-
                     anterior
-
                 );
 
 
             const actualTop10 =
-
                 this.obtenerAciertosTop10(
-
                     actual
-
                 );
 
 
             const diferencia =
-
                 actualTop10 -
-
                 anteriorTop10;
 
 
+            const umbralTop10 =
+
+                Math.max(
+
+                    2,
+
+                    this.configuracion
+                        .umbralCambioFuerte /
+                    10
+
+                );
+
+
             if (
-
                 Math.abs(
-
                     diferencia
-
                 ) >=
-
-                this.configuracion.umbralCambioFuerte
-
+                umbralTop10
             ) {
 
                 cambios.push({
 
                     tipo:
-
                         "cambio_brusco_top10",
 
                     fecha:
-
                         actual.fechaEvaluacion ||
-
                         null,
 
                     anterior:
-
                         anteriorTop10,
 
                     actual:
-
                         actualTop10,
 
                     diferencia,
@@ -2557,301 +3551,573 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
+    /*================================================================
         SEÑALES PARA OPTIMIZACIÓN
-    ==============================================================*/
+    ================================================================*/
 
     generarSeñalesOptimizacion(
-
         tendencias,
-
-        motores,
-
+        evolucionMotores,
         cambios,
-
-        comparacionPeriodos
-
+        comparacionPeriodos,
+        datosSuficientes
     ) {
 
         const señales = [];
 
 
-        /*
-         * Señales generales.
-
-         */
-
-        for (
-
-            const clave in tendencias
-
-        ) {
-
-            const tendencia =
-
-                tendencias[clave];
-
-
-            if (
-
-                tendencia.tendencia ===
-
-                "ascendente"
-
-            ) {
-
-                señales.push({
-
-                    tipo:
-
-                        "indicador_en_mejora",
-
-                    indicador:
-
-                        clave,
-
-                    prioridad:
-
-                        "media",
-
-                    valor:
-
-                        tendencia.pendiente
-
-                });
-
-            }
-
-
-            if (
-
-                tendencia.tendencia ===
-
-                "descendente"
-
-            ) {
-
-                señales.push({
-
-                    tipo:
-
-                        "indicador_en_deterioro",
-
-                    indicador:
-
-                        clave,
-
-                    prioridad:
-
-                        "media",
-
-                    valor:
-
-                        tendencia.pendiente
-
-                });
-
-            }
-
-        }
-
-
-        /*
-         * Señales de motores.
-
-         */
-
-        for (
-
-            const clave in motores
-
-        ) {
-
-            const motor =
-
-                motores[clave];
-
-
-            if (
-
-                motor.estado ===
-
-                "mejorando"
-
-            ) {
-
-                señales.push({
-
-                    tipo:
-
-                        "motor_candidato_aumento",
-
-                    motor:
-
-                        clave,
-
-                    prioridad:
-
-                        "media",
-
-                    variacion:
-
-                        motor.variacionReciente
-
-                });
-
-            }
-
-
-            if (
-
-                motor.estado ===
-
-                "empeorando"
-
-            ) {
-
-                señales.push({
-
-                    tipo:
-
-                        "motor_candidato_revision",
-
-                    motor:
-
-                        clave,
-
-                    prioridad:
-
-                        "media",
-
-                    variacion:
-
-                        motor.variacionReciente
-
-                });
-
-            }
-
-        }
-
-
-        /*
-         * Comparación de períodos.
-
-         */
+        /*------------------------------------------------------------
+            BLOQUEO DE OPTIMIZACIÓN
+        ------------------------------------------------------------*/
 
         if (
-
-            comparacionPeriodos.disponible
-
-        ) {
-
-            const variaciones =
-
-                comparacionPeriodos.variaciones;
-
-
-            if (
-
-                variaciones.top10 >=
-
-                this.configuracion.umbralCambio
-
-            ) {
-
-                señales.push({
-
-                    tipo:
-
-                        "modelo_mejorando",
-
-                    prioridad:
-
-                        "alta",
-
-                    variacion:
-
-                        variaciones.top10
-
-                });
-
-            }
-
-
-            if (
-
-                variaciones.top10 <=
-
-                -this.configuracion.umbralCambio
-
-            ) {
-
-                señales.push({
-
-                    tipo:
-
-                        "modelo_empeorando",
-
-                    prioridad:
-
-                        "alta",
-
-                    variacion:
-
-                        variaciones.top10
-
-                });
-
-            }
-
-        }
-
-
-        /*
-         * Cambios bruscos.
-
-         */
-
-        const cambiosFuertes =
-
-            cambios.filter(
-
-                cambio =>
-
-                    Math.abs(
-
-                        this.numeroSeguro(
-
-                            cambio.diferencia
-
-                        )
-
-                    ) >=
-
-                    this.configuracion.umbralCambioFuerte
-
-            );
-
-
-        if (
-
-            cambiosFuertes.length > 0
-
+            !datosSuficientes
         ) {
 
             señales.push({
 
                 tipo:
+                    "evidencia_insuficiente",
 
+                prioridad:
+                    "informativa",
+
+                habilitada:
+                    false,
+
+                evaluacionesMinimas:
+                    this.configuracion
+                        .minimoEvaluaciones,
+
+                descripcion:
+
+                    "El sistema puede analizar la evolución, pero todavía no posee suficientes evaluaciones para recomendar ajustes automáticos de pesos."
+
+            });
+
+        }
+
+
+        /*------------------------------------------------------------
+            TENDENCIAS GLOBALES
+        ------------------------------------------------------------*/
+
+        for (
+            const clave
+            in tendencias
+        ) {
+
+            const tendencia =
+                tendencias[clave];
+
+
+            if (
+                tendencia.tendencia ===
+                "ascendente"
+            ) {
+
+                señales.push({
+
+                    tipo:
+                        "indicador_en_mejora",
+
+                    indicador:
+                        clave,
+
+                    prioridad:
+                        datosSuficientes
+
+                            ? "media"
+
+                            : "informativa",
+
+                    habilitada:
+                        datosSuficientes,
+
+                    valor:
+                        tendencia.pendiente
+
+                });
+
+            }
+
+
+            if (
+                tendencia.tendencia ===
+                "descendente"
+            ) {
+
+                señales.push({
+
+                    tipo:
+                        "indicador_en_deterioro",
+
+                    indicador:
+                        clave,
+
+                    prioridad:
+                        datosSuficientes
+
+                            ? "media"
+
+                            : "informativa",
+
+                    habilitada:
+                        datosSuficientes,
+
+                    valor:
+                        tendencia.pendiente
+
+                });
+
+            }
+
+        }
+
+
+        /*------------------------------------------------------------
+            MOTORES
+        ------------------------------------------------------------*/
+
+        const motores =
+            evolucionMotores
+                .porMotor ||
+            {};
+
+
+        for (
+            const clave
+            in motores
+        ) {
+
+            const motor =
+                motores[clave];
+
+
+            /*
+             * Candidato a aumento.
+             */
+
+            if (
+                motor.estado ===
+                "mejorando"
+            ) {
+
+                señales.push({
+
+                    tipo:
+                        "motor_candidato_aumento",
+
+                    motor:
+                        clave,
+
+                    prioridad:
+                        datosSuficientes
+
+                            ? "media"
+
+                            : "informativa",
+
+                    habilitada:
+                        datosSuficientes,
+
+                    indiceHistorico:
+                        motor.promedioIndiceDiscriminacion,
+
+                    indiceAnterior:
+                        motor.promedioIndiceAnterior,
+
+                    indiceReciente:
+                        motor.promedioIndiceReciente,
+
+                    variacion:
+                        motor.variacionIndiceReciente,
+
+                    pendiente:
+                        motor
+                            .tendenciaIndiceDiscriminacion
+                            .pendiente,
+
+                    ventajaScore:
+                        motor.promedioVentajaScore
+
+                });
+
+            }
+
+
+            /*
+             * Candidato a revisión.
+             */
+
+            if (
+
+                motor.estado ===
+                    "empeorando" ||
+
+                motor.estado ===
+                    "debil_historico" ||
+
+                motor.estado ===
+                    "debil_reciente"
+
+            ) {
+
+                señales.push({
+
+                    tipo:
+                        "motor_candidato_revision",
+
+                    motor:
+                        clave,
+
+                    prioridad:
+                        datosSuficientes
+
+                            ? "media"
+
+                            : "informativa",
+
+                    habilitada:
+                        datosSuficientes,
+
+                    indiceHistorico:
+                        motor.promedioIndiceDiscriminacion,
+
+                    indiceAnterior:
+                        motor.promedioIndiceAnterior,
+
+                    indiceReciente:
+                        motor.promedioIndiceReciente,
+
+                    variacion:
+                        motor.variacionIndiceReciente,
+
+                    pendiente:
+                        motor
+                            .tendenciaIndiceDiscriminacion
+                            .pendiente
+
+                });
+
+            }
+
+
+            /*
+             * Tendencia positiva todavía informativa.
+             */
+
+            if (
+                motor.estado ===
+                "tendencia_positiva"
+            ) {
+
+                señales.push({
+
+                    tipo:
+                        "motor_tendencia_positiva",
+
+                    motor:
+                        clave,
+
+                    prioridad:
+                        "informativa",
+
+                    habilitada:
+                        false,
+
+                    pendiente:
+                        motor
+                            .tendenciaIndiceDiscriminacion
+                            .pendiente
+
+                });
+
+            }
+
+
+            /*
+             * Tendencia negativa informativa.
+             */
+
+            if (
+                motor.estado ===
+                "tendencia_negativa"
+            ) {
+
+                señales.push({
+
+                    tipo:
+                        "motor_tendencia_negativa",
+
+                    motor:
+                        clave,
+
+                    prioridad:
+                        "informativa",
+
+                    habilitada:
+                        false,
+
+                    pendiente:
+                        motor
+                            .tendenciaIndiceDiscriminacion
+                            .pendiente
+
+                });
+
+            }
+
+
+            /*
+             * Motor consistente.
+             */
+
+            if (
+
+                motor.consistente &&
+
+                motor.promedioIndiceDiscriminacion >=
+                this.configuracion
+                    .minimoIndicePositivo
+
+            ) {
+
+                señales.push({
+
+                    tipo:
+                        "motor_consistente",
+
+                    motor:
+                        clave,
+
+                    prioridad:
+                        "informativa",
+
+                    habilitada:
+                        false,
+
+                    indicePromedio:
+                        motor.promedioIndiceDiscriminacion,
+
+                    consistencia:
+                        motor.consistencia
+
+                });
+
+            }
+
+        }
+
+
+        /*------------------------------------------------------------
+            MEJOR MOTOR HISTÓRICO
+        ------------------------------------------------------------*/
+
+        if (
+            evolucionMotores
+                .mejorMotorHistorico
+        ) {
+
+            const clave =
+                evolucionMotores
+                    .mejorMotorHistorico;
+
+
+            const motor =
+                motores[clave];
+
+
+            señales.push({
+
+                tipo:
+                    "mejor_motor_historico",
+
+                motor:
+                    clave,
+
+                prioridad:
+                    "informativa",
+
+                habilitada:
+                    false,
+
+                indice:
+                    motor
+                        ?.promedioIndiceDiscriminacion ??
+                    0,
+
+                ventajaScore:
+                    motor
+                        ?.promedioVentajaScore ??
+                    0
+
+            });
+
+        }
+
+
+        /*------------------------------------------------------------
+            MEJOR MOTOR RECIENTE
+        ------------------------------------------------------------*/
+
+        if (
+            evolucionMotores
+                .mejorMotorReciente
+        ) {
+
+            const clave =
+                evolucionMotores
+                    .mejorMotorReciente;
+
+
+            const motor =
+                motores[clave];
+
+
+            señales.push({
+
+                tipo:
+                    "mejor_motor_reciente",
+
+                motor:
+                    clave,
+
+                prioridad:
+                    "informativa",
+
+                habilitada:
+                    false,
+
+                indiceReciente:
+                    motor
+                        ?.promedioIndiceReciente ??
+                    0
+
+            });
+
+        }
+
+
+        /*------------------------------------------------------------
+            COMPARACIÓN GLOBAL DE PERÍODOS
+        ------------------------------------------------------------*/
+
+        if (
+            comparacionPeriodos
+                ?.disponible
+        ) {
+
+            const variaciones =
+                comparacionPeriodos
+                    .variaciones;
+
+
+            const umbralTop10 =
+
+                Math.max(
+
+                    0.5,
+
+                    this.configuracion
+                        .umbralCambio /
+                    10
+
+                );
+
+
+            if (
+                variaciones.top10 >=
+                umbralTop10
+            ) {
+
+                señales.push({
+
+                    tipo:
+                        "modelo_mejorando",
+
+                    prioridad:
+                        datosSuficientes
+
+                            ? "alta"
+
+                            : "informativa",
+
+                    habilitada:
+                        datosSuficientes,
+
+                    variacion:
+                        variaciones.top10
+
+                });
+
+            }
+
+
+            if (
+                variaciones.top10 <=
+                -umbralTop10
+            ) {
+
+                señales.push({
+
+                    tipo:
+                        "modelo_empeorando",
+
+                    prioridad:
+                        datosSuficientes
+
+                            ? "alta"
+
+                            : "informativa",
+
+                    habilitada:
+                        datosSuficientes,
+
+                    variacion:
+                        variaciones.top10
+
+                });
+
+            }
+
+        }
+
+
+        /*------------------------------------------------------------
+            CAMBIOS BRUSCOS
+        ------------------------------------------------------------*/
+
+        const cambiosFuertes =
+            cambios.filter(
+
+                cambio =>
+                    cambio.tipo ===
+                    "cambio_brusco_top10"
+
+            );
+
+
+        if (
+            cambiosFuertes.length > 0
+        ) {
+
+            señales.push({
+
+                tipo:
                     "cambio_comportamiento",
 
                 prioridad:
+                    datosSuficientes
 
-                    "alta",
+                        ? "alta"
+
+                        : "informativa",
+
+                habilitada:
+                    datosSuficientes,
 
                 cantidad:
-
                     cambiosFuertes.length
 
             });
@@ -2864,115 +4130,138 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        RESUMEN PARA IA
-    ==============================================================*/
+    /*================================================================
+        RESUMEN IA
+    ================================================================*/
 
     generarResumenIA(
-
         evaluaciones,
-
         rendimientoGeneral,
-
         periodos,
-
         comparacionPeriodos,
-
         tendencias,
-
-        motores,
-
+        evolucionMotores,
         cambios,
-
-        señalesOptimizacion
-
+        señalesOptimizacion,
+        datosSuficientes
     ) {
 
-        /*
-         * Información limpia y estructurada.
-         *
-         * Esta salida podrá copiarse/exportarse
-         * posteriormente para entregarla a una IA.
+        const motores =
+            evolucionMotores
+                .rankingMotores ||
+            [];
 
-         */
 
         return {
 
             tipo:
-
                 "analisis_evolucion_modelo",
 
-
             version:
-
                 this.version,
 
-
             fecha:
-
-                new Date().toISOString(),
-
+                new Date()
+                    .toISOString(),
 
             cantidadEvaluaciones:
-
                 evaluaciones.length,
 
+            minimoEvaluaciones:
+                this.configuracion
+                    .minimoEvaluaciones,
+
+            datosSuficientes,
 
             rendimientoGeneral,
 
-
             comparacionPeriodos,
-
 
             tendencias,
 
 
+            mejorMotorHistorico:
+                evolucionMotores
+                    .mejorMotorHistorico,
+
+
+            mejorMotorReciente:
+                evolucionMotores
+                    .mejorMotorReciente,
+
+
+            motoresConsistentes:
+                evolucionMotores
+                    .motoresConsistentes,
+
+
+            motoresEnMejora:
+                evolucionMotores
+                    .motoresEnMejora,
+
+
+            motoresEnDeterioro:
+                evolucionMotores
+                    .motoresEnDeterioro,
+
+
             motores:
 
-
-                Object.values(
-
-                    motores
-
-                ).map(
+                motores.map(
 
                     motor => ({
 
-                        motor:
+                        posicionEvolutiva:
+                            motor.posicionEvolutiva,
 
+                        motor:
                             motor.motor,
 
                         cantidadEvaluaciones:
-
                             motor.cantidadEvaluaciones,
 
                         promedioTasaAcierto:
-
                             motor.promedioTasaAcierto,
 
-                        promedioTasaReciente:
+                        promedioVentajaScore:
+                            motor.promedioVentajaScore,
 
-                            motor.promedioTasaReciente,
+                        promedioVentajaConfianza:
+                            motor.promedioVentajaConfianza,
 
-                        promedioTasaAnterior:
+                        promedioIndiceDiscriminacion:
+                            motor.promedioIndiceDiscriminacion,
 
-                            motor.promedioTasaAnterior,
+                        promedioIndiceAnterior:
+                            motor.promedioIndiceAnterior,
 
-                        variacionReciente:
+                        promedioIndiceReciente:
+                            motor.promedioIndiceReciente,
 
-                            motor.variacionReciente,
+                        variacionIndiceReciente:
+                            motor.variacionIndiceReciente,
+
+                        pendienteIndice:
+                            motor
+                                .tendenciaIndiceDiscriminacion
+                                .pendiente,
+
+                        tendenciaIndice:
+                            motor
+                                .tendenciaIndiceDiscriminacion
+                                .tendencia,
+
+                        ventanaComparacion:
+                            motor.ventanaComparacion,
 
                         estado:
-
                             motor.estado,
 
-                        tendenciaTasa:
+                        consistencia:
+                            motor.consistencia,
 
-                            motor.tendenciaTasa,
-
-                        tendenciaAciertos:
-
-                            motor.tendenciaAciertos
+                        consistente:
+                            motor.consistente
 
                     })
 
@@ -2980,7 +4269,6 @@ export default class MotorEvolucion {
 
 
             cambios,
-
 
             señalesOptimizacion,
 
@@ -2992,88 +4280,76 @@ export default class MotorEvolucion {
                     periodo => ({
 
                         numero:
-
                             periodo.numero,
 
                         nombre:
-
                             periodo.nombre,
 
                         cantidad:
-
                             periodo.cantidad,
 
                         desde:
-
                             periodo.evaluaciones[0]
-
                                 ?.fechaEvaluacion ||
-
                             null,
 
                         hasta:
-
                             periodo.evaluaciones[
-
                                 periodo.evaluaciones.length - 1
-
                             ]
-
                                 ?.fechaEvaluacion ||
+                            null,
 
-                            null
+                        resumen:
+                            periodo.resumen
 
                     })
 
                 ),
 
 
-            preguntasSugeridasIA: [
+            interpretacionBase: {
 
-                "¿Qué motores muestran una mejora sostenida?",
+                aclaracion:
 
-                "¿Qué motores muestran deterioro reciente?",
+                    "Las métricas describen el comportamiento histórico del modelo y no representan probabilidades reales.",
 
-                "¿Qué indicadores presentan cambios de comportamiento?",
+                comparacionMotores:
 
-                "¿Existe una diferencia consistente entre períodos?",
+                    "Cada motor se analiza mediante su índice histórico, pendiente temporal y comparación entre una ventana reciente y una ventana anterior equivalente.",
 
-                "¿Qué variables adicionales podrían incorporarse?",
+                optimizacion:
 
-                "¿Qué motores deberían ser revisados antes de modificar sus pesos?",
+                    datosSuficientes
 
-                "¿La mejora observada es estable o depende de pocas semanas?",
+                        ? "Existe el mínimo configurado de evaluaciones para permitir que un futuro optimizador considere propuestas controladas de ajuste."
 
-                "¿Se observan cambios estructurales en el comportamiento histórico?"
+                        : `Todavía no se alcanzaron las ${this.configuracion.minimoEvaluaciones} evaluaciones mínimas requeridas para habilitar propuestas de optimización.`
 
-            ],
+            },
 
 
             advertencia:
 
-                "Este análisis describe el comportamiento histórico del modelo. No constituye una garantía ni una probabilidad real de resultados futuros."
+                "La evolución histórica observada no garantiza resultados futuros."
 
         };
 
     }
 
 
-    /*==============================================================
+    /*================================================================
         OBTENER ACIERTOS TOP 10
-    ==============================================================*/
+    ================================================================*/
 
     obtenerAciertosTop10(
-
         evaluacion
-
     ) {
 
         return this.numeroSeguro(
 
             evaluacion
-
                 ?.metricas
-
                 ?.aciertosTop10
 
         );
@@ -3081,31 +4357,37 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        OBTENER ÚLTIMAS EVALUACIONES
-    ==============================================================*/
+    /*================================================================
+        OBTENER ÚLTIMOS
+    ================================================================*/
 
     obtenerUltimos(
-
         lista,
-
         cantidad
-
     ) {
 
         if (
-
             !Array.isArray(
-
                 lista
-
             )
-
         ) {
 
             return [];
 
         }
+
+
+        const limite =
+
+            Math.max(
+
+                0,
+
+                Number(
+                    cantidad
+                ) || 0
+
+            );
 
 
         return lista.slice(
@@ -3115,12 +4397,7 @@ export default class MotorEvolucion {
                 0,
 
                 lista.length -
-
-                Number(
-
-                    cantidad
-
-                )
+                limite
 
             )
 
@@ -3129,26 +4406,19 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        CALCULAR PROMEDIO
-    ==============================================================*/
+    /*================================================================
+        PROMEDIO
+    ================================================================*/
 
     calcularPromedio(
-
         valores
-
     ) {
 
         if (
-
             !Array.isArray(
-
                 valores
-
             ) ||
-
             valores.length === 0
-
         ) {
 
             return 0;
@@ -3157,28 +4427,17 @@ export default class MotorEvolucion {
 
 
         const validos =
+            valores
 
-            valores.filter(
+                .map(Number)
 
-                valor =>
-
-                    Number.isFinite(
-
-                        Number(
-
-                            valor
-
-                        )
-
-                    )
-
-            );
+                .filter(
+                    Number.isFinite
+                );
 
 
         if (
-
             validos.length === 0
-
         ) {
 
             return 0;
@@ -3191,25 +4450,14 @@ export default class MotorEvolucion {
             validos.reduce(
 
                 (
-
                     suma,
-
                     valor
-
                 ) =>
-
-                    suma +
-
-                    Number(
-
-                        valor
-
-                    ),
+                    suma + valor,
 
                 0
 
             ) /
-
             validos.length,
 
             6
@@ -3219,122 +4467,126 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
+    /*================================================================
         RESULTADO VACÍO
-    ==============================================================*/
+    ================================================================*/
 
     resultadoVacio() {
 
         return {
 
             id:
-
                 this.generarIdAnalisis(),
 
+            nombre:
+                this.nombre,
 
             version:
-
                 this.version,
 
-
             generadoEn:
+                new Date()
+                    .toISOString(),
 
-                new Date().toISOString(),
+            cantidadEvaluaciones:
+                0,
 
+            datosSuficientes:
+                false,
 
-            cantidadEvaluaciones: 0,
-
+            minimoEvaluaciones:
+                this.configuracion
+                    .minimoEvaluaciones,
 
             rendimientoGeneral:
-
                 this.analizarRendimientoGeneral(
-
                     []
-
                 ),
 
-
-            periodos: [],
-
+            periodos:
+                [],
 
             comparacionPeriodos: {
 
-                disponible: false,
+                disponible:
+                    false,
 
                 motivo:
+                    "No existen evaluaciones.",
 
-                    "No existen evaluaciones."
+                variaciones:
+                    null,
 
-            },
-
-
-            tendencias: {
-
-                top10:
-
-                    this.analizarSerie(
-
-                        []
-
-                    ),
-
-                top20:
-
-                    this.analizarSerie(
-
-                        []
-
-                    ),
-
-                titulares:
-
-                    this.analizarSerie(
-
-                        []
-
-                    ),
-
-                suplentes:
-
-                    this.analizarSerie(
-
-                        []
-
-                    ),
-
-                cobertura:
-
-                    this.analizarSerie(
-
-                        []
-
-                    )
+                direccion:
+                    "sin_datos"
 
             },
 
+            tendencias:
+                {},
 
-            motores: {},
+            motores:
+                {},
 
+            rankingMotores:
+                [],
 
-            cambios: [],
+            mejorMotorHistorico:
+                null,
 
+            mejorMotorReciente:
+                null,
 
-            señalesOptimizacion: [],
+            motoresConsistentes:
+                [],
 
+            motoresEnMejora:
+                [],
+
+            motoresEnDeterioro:
+                [],
+
+            cambios:
+                [],
+
+            señalesOptimizacion: [
+
+                {
+
+                    tipo:
+                        "evidencia_insuficiente",
+
+                    prioridad:
+                        "informativa",
+
+                    habilitada:
+                        false,
+
+                    evaluacionesMinimas:
+                        this.configuracion
+                            .minimoEvaluaciones,
+
+                    descripcion:
+
+                        "No existen evaluaciones suficientes para analizar evolución."
+
+                }
+
+            ],
 
             resumenIA: {
 
                 tipo:
-
                     "analisis_evolucion_modelo",
 
-                cantidadEvaluaciones: 0,
+                version:
+                    this.version,
 
-                motores: [],
+                cantidadEvaluaciones:
+                    0,
 
-                cambios: [],
-
-                señalesOptimizacion: []
+                datosSuficientes:
+                    false
 
             }
 
@@ -3343,35 +4595,28 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        COMPROBAR SI HAY DATOS SUFICIENTES
-    ==============================================================*/
+    /*================================================================
+        DATOS SUFICIENTES
+    ================================================================*/
 
     hayDatosSuficientes(
-
         cantidad = null
-
     ) {
 
-        const cantidadEvaluaciones =
-
-            cantidad !== null
-
-                ? Number(
-
-                    cantidad
-
-                )
-
-                : 0;
+        const valor =
+            Number(
+                cantidad
+            );
 
 
         return (
 
-            cantidadEvaluaciones >=
+            Number.isFinite(
+                valor
+            ) &&
 
+            valor >=
             this.configuracion
-
                 .minimoEvaluaciones
 
         );
@@ -3379,68 +4624,61 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
+    /*================================================================
         GENERAR ID
-    ==============================================================*/
+    ================================================================*/
 
     generarIdAnalisis() {
 
         const fecha =
-
             new Date()
 
                 .toISOString()
 
                 .replace(
-
                     /[^0-9]/g,
-
                     ""
-
                 );
 
 
         const aleatorio =
-
             Math.random()
 
-                .toString(
-
-                    36
-
-                )
+                .toString(36)
 
                 .substring(
-
                     2,
-
                     8
-
                 );
 
 
-        return `evolucion_${fecha}_${aleatorio}`;
+        return (
+            `evolucion_${fecha}_${aleatorio}`
+        );
 
     }
 
 
-    /*==============================================================
+    /*================================================================
         OBTENER FECHA
-    ==============================================================*/
+    ================================================================*/
 
     obtenerFecha(
-
         evaluacion
-
     ) {
 
         const fecha =
-
             new Date(
 
-                evaluacion?.fechaEvaluacion ||
+                evaluacion
+                    ?.fechaEvaluacion ||
 
-                evaluacion?.fecha ||
+                evaluacion
+                    ?.fecha ||
+
+                evaluacion
+                    ?.semana
+                    ?.fecha ||
 
                 0
 
@@ -3448,14 +4686,11 @@ export default class MotorEvolucion {
 
 
         const timestamp =
-
             fecha.getTime();
 
 
         return Number.isFinite(
-
             timestamp
-
         )
 
             ? timestamp
@@ -3465,31 +4700,23 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
+    /*================================================================
         NÚMERO SEGURO
-    ==============================================================*/
+    ================================================================*/
 
     numeroSeguro(
-
         valor,
-
         defecto = 0
-
     ) {
 
         const numero =
-
             Number(
-
                 valor
-
             );
 
 
         return Number.isFinite(
-
             numero
-
         )
 
             ? numero
@@ -3499,48 +4726,65 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
-        REDONDEAR
-    ==============================================================*/
+    /*================================================================
+        LIMITAR
+    ================================================================*/
 
-    redondear(
-
+    limitar(
         valor,
-
-        decimales = 4
-
+        minimo = 0,
+        maximo = 100
     ) {
 
         const numero =
-
             this.numeroSeguro(
+                valor,
+                minimo
+            );
 
+
+        return Math.min(
+
+            maximo,
+
+            Math.max(
+                minimo,
+                numero
+            )
+
+        );
+
+    }
+
+
+    /*================================================================
+        REDONDEAR
+    ================================================================*/
+
+    redondear(
+        valor,
+        decimales = 4
+    ) {
+
+        const numero =
+            this.numeroSeguro(
                 valor
-
             );
 
 
         const factor =
-
             Math.pow(
-
                 10,
-
                 decimales
-
             );
 
 
         return (
 
             Math.round(
-
                 numero *
-
                 factor
-
             ) /
-
             factor
 
         );
@@ -3548,73 +4792,71 @@ export default class MotorEvolucion {
     }
 
 
-    /*==============================================================
+    /*================================================================
         OBTENER ESTADO
-    ==============================================================*/
+    ================================================================*/
 
     obtenerEstado(
-
         cantidadEvaluaciones = 0
-
     ) {
+
+        const cantidad =
+            Number(
+                cantidadEvaluaciones
+            ) || 0;
+
 
         return {
 
             nombre:
-
                 this.nombre,
 
-
             version:
-
                 this.version,
 
-
             cantidadEvaluaciones:
-
-
-                Number(
-
-                    cantidadEvaluaciones
-
-                ),
-
+                cantidad,
 
             minimoEvaluaciones:
-
                 this.configuracion
-
                     .minimoEvaluaciones,
 
-
             datosSuficientes:
-
                 this.hayDatosSuficientes(
-
-                    cantidadEvaluaciones
-
+                    cantidad
                 ),
 
-
             periodoReciente:
-
                 this.configuracion
-
                     .periodoReciente,
 
+            cantidadPeriodos:
+                this.configuracion
+                    .cantidadPeriodos,
 
             umbralCambio:
-
                 this.configuracion
-
                     .umbralCambio,
 
-
             umbralCambioFuerte:
-
                 this.configuracion
+                    .umbralCambioFuerte,
 
-                    .umbralCambioFuerte
+            umbralDiscriminacion:
+                this.configuracion
+                    .umbralDiscriminacion,
+
+            minimoIndicePositivo:
+                this.configuracion
+                    .minimoIndicePositivo,
+
+            minimoEvaluacionesTendencia:
+                this.configuracion
+                    .minimoEvaluacionesTendencia,
+
+            pendienteMinimaMotor:
+                this.configuracion
+                    .pendienteMinimaMotor
 
         };
 

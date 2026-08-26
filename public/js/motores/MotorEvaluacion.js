@@ -1,4 +1,3 @@
-
 /**********************************************************************
  * SISTEMA HEURÍSTICO EVOLUTIVO
  *
@@ -20,6 +19,7 @@
  *   - Analizar score de los números acertados.
  *   - Analizar confianza.
  *   - Analizar qué motores participaron en los aciertos.
+ *   - Calcular capacidad discriminatoria de cada motor.
  *   - Generar indicadores para la futura optimización de pesos.
  *   - Generar información preparada para análisis mediante IA.
  *
@@ -35,24 +35,21 @@
 export default class MotorEvaluacion {
 
 
+    /*==============================================================
+        CONSTRUCTOR
+    ==============================================================*/
+
     constructor(configuracion = {}) {
 
         this.nombre =
-
             "MotorEvaluacion";
 
 
         this.version =
-
-            "1.0.0";
+            "1.1.0";
 
 
         this.configuracion = {
-
-            /*
-             * Cantidad de números que normalmente
-             * tendrá cada sorteo.
-             */
 
             cantidadNumerosEsperados:
 
@@ -60,10 +57,6 @@ export default class MotorEvaluacion {
 
                 10,
 
-            /*
-             * Cantidad mínima de semanas evaluadas
-             * antes de considerar ajustes automáticos.
-             */
 
             minimoSemanasParaOptimizacion:
 
@@ -75,10 +68,10 @@ export default class MotorEvaluacion {
 
 
         /*
-         * Historial interno de evaluaciones.
+         * Historial temporal en memoria.
          *
-         * En producción este historial será persistido
-         * en Firebase mediante un servicio específico.
+         * Posteriormente será persistido
+         * mediante un servicio específico.
          */
 
         this.historial = [];
@@ -144,9 +137,9 @@ export default class MotorEvaluacion {
             );
 
 
-        /*
-         * Evaluamos cada grupo.
-         */
+        /*----------------------------------------------------------
+            EVALUAR GRUPOS
+        ----------------------------------------------------------*/
 
         const top10 =
 
@@ -213,10 +206,9 @@ export default class MotorEvaluacion {
             );
 
 
-        /*
-         * Evaluación individual de todos los números
-         * reales.
-         */
+        /*----------------------------------------------------------
+            ACIERTOS DETALLADOS
+        ----------------------------------------------------------*/
 
         const aciertosDetallados =
 
@@ -229,10 +221,9 @@ export default class MotorEvaluacion {
             );
 
 
-        /*
-         * Analizamos qué motores participaron
-         * en los números acertados.
-         */
+        /*----------------------------------------------------------
+            RENDIMIENTO DE MOTORES
+        ----------------------------------------------------------*/
 
         const rendimientoMotores =
 
@@ -245,10 +236,9 @@ export default class MotorEvaluacion {
             );
 
 
-        /*
-         * Analizamos el comportamiento del ranking.
-
-         */
+        /*----------------------------------------------------------
+            COMPORTAMIENTO DEL RANKING
+        ----------------------------------------------------------*/
 
         const comportamientoRanking =
 
@@ -261,10 +251,9 @@ export default class MotorEvaluacion {
             );
 
 
-        /*
-         * Calculamos métricas generales.
-
-         */
+        /*----------------------------------------------------------
+            MÉTRICAS GENERALES
+        ----------------------------------------------------------*/
 
         const metricas =
 
@@ -285,10 +274,9 @@ export default class MotorEvaluacion {
             );
 
 
-        /*
-         * Detectamos señales para el futuro optimizador.
-
-         */
+        /*----------------------------------------------------------
+            SEÑALES DE OPTIMIZACIÓN
+        ----------------------------------------------------------*/
 
         const señalesOptimizacion =
 
@@ -301,11 +289,9 @@ export default class MotorEvaluacion {
             );
 
 
-        /*
-         * Generamos información estructurada
-         * para análisis posterior mediante IA.
-
-         */
+        /*----------------------------------------------------------
+            RESUMEN IA
+        ----------------------------------------------------------*/
 
         const resumenIA =
 
@@ -328,15 +314,21 @@ export default class MotorEvaluacion {
             );
 
 
+        /*----------------------------------------------------------
+            RESULTADO
+        ----------------------------------------------------------*/
+
         const evaluacion = {
 
             id:
 
                 this.generarIdEvaluacion(),
 
+
             version:
 
                 this.version,
+
 
             fechaEvaluacion:
 
@@ -431,11 +423,6 @@ export default class MotorEvaluacion {
         };
 
 
-        /*
-         * Guardamos temporalmente en memoria.
-
-         */
-
         this.historial.push(
 
             evaluacion
@@ -478,19 +465,33 @@ export default class MotorEvaluacion {
 
                     nombreGrupo,
 
-                cantidadPredicha: 0,
+                cantidadPredicha:
+
+                    0,
 
                 cantidadReales:
 
                     realesSet.size,
 
-                aciertos: 0,
+                aciertos:
 
-                porcentajeAcierto: 0,
+                    0,
 
-                numerosAcertados: [],
+                porcentajeAcierto:
 
-                posicionesAcertadas: []
+                    0,
+
+                numerosAcertados:
+
+                    [],
+
+                posicionesAcertadas:
+
+                    [],
+
+                detalle:
+
+                    []
 
             };
 
@@ -537,7 +538,7 @@ export default class MotorEvaluacion {
 
                     posicion:
 
-                        item.posicion ||
+                        item.posicion ??
 
                         null,
 
@@ -771,9 +772,7 @@ export default class MotorEvaluacion {
 
                     ),
 
-                motores:
-
-                    motores,
+                motores,
 
                 calidadPosicion:
 
@@ -820,14 +819,6 @@ export default class MotorEvaluacion {
         }
 
 
-        /*
-         * La calidad disminuye a medida que
-         * el número se aleja de la primera posición.
-         *
-         * No representa una probabilidad.
-         * Es simplemente una métrica interna.
-         */
-
         return this.redondear(
 
             100 /
@@ -837,6 +828,83 @@ export default class MotorEvaluacion {
             6
 
         );
+
+    }
+
+
+    /*==============================================================
+        CREAR ESTRUCTURA DE MOTOR
+    ==============================================================*/
+
+    crearRegistroMotor(
+
+        clave
+
+    ) {
+
+        return {
+
+            motor:
+
+                clave,
+
+            apariciones:
+
+                0,
+
+            aciertos:
+
+                0,
+
+            scoreTotal:
+
+                0,
+
+            scoreAciertos:
+
+                0,
+
+            confianzaTotal:
+
+                0,
+
+            confianzaAciertos:
+
+                0,
+
+            promedioScore:
+
+                0,
+
+            promedioScoreAciertos:
+
+                0,
+
+            promedioConfianza:
+
+                0,
+
+            promedioConfianzaAciertos:
+
+                0,
+
+            ventajaScore:
+
+                0,
+
+            ventajaConfianza:
+
+                0,
+
+            indiceDiscriminacion:
+
+                0,
+
+            tasaAcierto:
+
+                0
+
+        };
 
     }
 
@@ -856,11 +924,9 @@ export default class MotorEvaluacion {
         const motores = {};
 
 
-        /*
-         * Primero obtenemos todos los motores
-         * existentes en la predicción.
-
-         */
+        /*----------------------------------------------------------
+            RECORRER RANKING COMPLETO
+        ----------------------------------------------------------*/
 
         if (
 
@@ -901,53 +967,13 @@ export default class MotorEvaluacion {
 
                     ) {
 
-                        motores[clave] = {
+                        motores[clave] =
 
-                            motor:
+                            this.crearRegistroMotor(
 
-                                clave,
+                                clave
 
-                            apariciones:
-
-                                0,
-
-                            aciertos:
-
-                                0,
-
-                            scoreTotal:
-
-                                0,
-
-                            scoreAciertos:
-
-                                0,
-
-                            confianzaTotal:
-
-                                0,
-
-                            confianzaAciertos:
-
-                                0,
-
-                            promedioScore:
-
-                                0,
-
-                            promedioScoreAciertos:
-
-                                0,
-
-                            promedioConfianza:
-
-                                0,
-
-                            promedioConfianzaAciertos:
-
-                                0
-
-                        };
+                            );
 
                     }
 
@@ -975,17 +1001,20 @@ export default class MotorEvaluacion {
                         );
 
 
-                    motores[clave].apariciones++;
+                    motores[clave]
+                        .apariciones++;
 
 
-                    motores[clave].scoreTotal +=
+                    motores[clave]
+                        .scoreTotal +=
 
-                        score;
+                            score;
 
 
-                    motores[clave].confianzaTotal +=
+                    motores[clave]
+                        .confianzaTotal +=
 
-                        confianza;
+                            confianza;
 
                 }
 
@@ -994,11 +1023,9 @@ export default class MotorEvaluacion {
         }
 
 
-        /*
-         * Marcamos los motores presentes en los
-         * números acertados.
-
-         */
+        /*----------------------------------------------------------
+            RECORRER ACIERTOS
+        ----------------------------------------------------------*/
 
         for (
 
@@ -1027,33 +1054,13 @@ export default class MotorEvaluacion {
 
                 ) {
 
-                    motores[clave] = {
+                    motores[clave] =
 
-                        motor:
+                        this.crearRegistroMotor(
 
-                            clave,
+                            clave
 
-                        apariciones: 0,
-
-                        aciertos: 0,
-
-                        scoreTotal: 0,
-
-                        scoreAciertos: 0,
-
-                        confianzaTotal: 0,
-
-                        confianzaAciertos: 0,
-
-                        promedioScore: 0,
-
-                        promedioScoreAciertos: 0,
-
-                        promedioConfianza: 0,
-
-                        promedioConfianzaAciertos: 0
-
-                    };
+                        );
 
                 }
 
@@ -1081,27 +1088,29 @@ export default class MotorEvaluacion {
                     );
 
 
-                motores[clave].aciertos++;
+                motores[clave]
+                    .aciertos++;
 
 
-                motores[clave].scoreAciertos +=
+                motores[clave]
+                    .scoreAciertos +=
 
-                    score;
+                        score;
 
 
-                motores[clave].confianzaAciertos +=
+                motores[clave]
+                    .confianzaAciertos +=
 
-                    confianza;
+                        confianza;
 
             }
 
         }
 
 
-        /*
-         * Calculamos promedios.
-
-         */
+        /*----------------------------------------------------------
+            CALCULAR INDICADORES
+        ----------------------------------------------------------*/
 
         for (
 
@@ -1182,13 +1191,72 @@ export default class MotorEvaluacion {
                     : 0;
 
 
-            /*
-             * Tasa simple de aciertos del motor.
-             *
-             * Esta métrica es descriptiva.
-             * No significa que el motor haya
-             * "causado" el acierto.
-             */
+            /*------------------------------------------------------
+                VENTAJA SCORE
+            ------------------------------------------------------*/
+
+            motor.ventajaScore =
+
+                this.redondear(
+
+                    motor.promedioScoreAciertos -
+
+                    motor.promedioScore,
+
+                    6
+
+                );
+
+
+            /*------------------------------------------------------
+                VENTAJA CONFIANZA
+            ------------------------------------------------------*/
+
+            motor.ventajaConfianza =
+
+                this.redondear(
+
+                    motor.promedioConfianzaAciertos -
+
+                    motor.promedioConfianza,
+
+                    6
+
+                );
+
+
+            /*------------------------------------------------------
+                ÍNDICE DE DISCRIMINACIÓN
+            ------------------------------------------------------*/
+
+            motor.indiceDiscriminacion =
+
+                this.redondear(
+
+                    (
+
+                        motor.ventajaScore *
+
+                        0.70
+
+                    ) +
+
+                    (
+
+                        motor.ventajaConfianza *
+
+                        0.30
+
+                    ),
+
+                    6
+
+                );
+
+
+            /*------------------------------------------------------
+                TASA DESCRIPTIVA
+            ------------------------------------------------------*/
 
             motor.tasaAcierto =
 
@@ -1213,11 +1281,9 @@ export default class MotorEvaluacion {
         }
 
 
-        /*
-         * Ranking de motores según su presencia
-         * en los aciertos.
-
-         */
+        /*----------------------------------------------------------
+            RANKING REAL DE MOTORES
+        ----------------------------------------------------------*/
 
         const rankingMotores =
 
@@ -1229,30 +1295,144 @@ export default class MotorEvaluacion {
 
                 (a, b) => {
 
+                    /*
+                     * 1. Índice discriminación.
+                     */
+
+                    const discriminacionA =
+
+                        this.numeroSeguro(
+
+                            a.indiceDiscriminacion
+
+                        );
+
+
+                    const discriminacionB =
+
+                        this.numeroSeguro(
+
+                            b.indiceDiscriminacion
+
+                        );
+
+
                     if (
 
-                        b.aciertos !==
+                        discriminacionB !==
 
-                        a.aciertos
+                        discriminacionA
 
                     ) {
 
                         return (
 
-                            b.aciertos -
+                            discriminacionB -
 
-                            a.aciertos
+                            discriminacionA
 
                         );
 
                     }
 
 
-                    return (
+                    /*
+                     * 2. Ventaja de score.
+                     */
 
-                        b.tasaAcierto -
+                    const ventajaA =
 
-                        a.tasaAcierto
+                        this.numeroSeguro(
+
+                            a.ventajaScore
+
+                        );
+
+
+                    const ventajaB =
+
+                        this.numeroSeguro(
+
+                            b.ventajaScore
+
+                        );
+
+
+                    if (
+
+                        ventajaB !==
+
+                        ventajaA
+
+                    ) {
+
+                        return (
+
+                            ventajaB -
+
+                            ventajaA
+
+                        );
+
+                    }
+
+
+                    /*
+                     * 3. Score promedio en aciertos.
+                     */
+
+                    const scoreA =
+
+                        this.numeroSeguro(
+
+                            a.promedioScoreAciertos
+
+                        );
+
+
+                    const scoreB =
+
+                        this.numeroSeguro(
+
+                            b.promedioScoreAciertos
+
+                        );
+
+
+                    if (
+
+                        scoreB !==
+
+                        scoreA
+
+                    ) {
+
+                        return (
+
+                            scoreB -
+
+                            scoreA
+
+                        );
+
+                    }
+
+
+                    /*
+                     * 4. Nombre estable.
+                     */
+
+                    return String(
+
+                        a.motor
+
+                    ).localeCompare(
+
+                        String(
+
+                            b.motor
+
+                        )
 
                     );
 
@@ -1361,15 +1541,32 @@ export default class MotorEvaluacion {
 
             ) {
 
-                posiciones.push(
+                const posicion =
 
                     Number(
 
                         item.posicion
 
+                    );
+
+
+                if (
+
+                    Number.isFinite(
+
+                        posicion
+
                     )
 
-                );
+                ) {
+
+                    posiciones.push(
+
+                        posicion
+
+                    );
+
+                }
 
             }
 
@@ -1439,7 +1636,9 @@ export default class MotorEvaluacion {
 
                 posiciones.length > 0
 
-                    ? posiciones[posiciones.length - 1]
+                    ? posiciones[
+                        posiciones.length - 1
+                    ]
 
                     : null,
 
@@ -1638,7 +1837,8 @@ export default class MotorEvaluacion {
 
             porcentajeRankingCompleto:
 
-                rankingCompleto.porcentajeAcierto,
+                rankingCompleto
+                    .porcentajeAcierto,
 
 
             promedioScoreAciertos:
@@ -1683,16 +1883,32 @@ export default class MotorEvaluacion {
         const señales = [];
 
 
-        /*
-         * Motor con mayor cantidad de apariciones
-         * en los aciertos.
-         */
+        /*----------------------------------------------------------
+            MOTOR DESTACADO
+        ----------------------------------------------------------*/
 
         if (
 
-            rendimientoMotores.mejorMotor
+            rendimientoMotores &&
+
+            Array.isArray(
+
+                rendimientoMotores
+                    .rankingMotores
+
+            ) &&
+
+            rendimientoMotores
+                .rankingMotores
+                .length > 0
 
         ) {
+
+            const mejorMotor =
+
+                rendimientoMotores
+                    .rankingMotores[0];
+
 
             señales.push({
 
@@ -1702,21 +1918,35 @@ export default class MotorEvaluacion {
 
                 motor:
 
-                    rendimientoMotores.mejorMotor,
+                    mejorMotor.motor,
 
                 descripcion:
 
-                    "Motor con mayor presencia descriptiva entre los números acertados."
+                    "Motor con mayor capacidad discriminatoria en esta evaluación.",
+
+                indiceDiscriminacion:
+
+                    mejorMotor
+                        .indiceDiscriminacion,
+
+                ventajaScore:
+
+                    mejorMotor
+                        .ventajaScore,
+
+                ventajaConfianza:
+
+                    mejorMotor
+                        .ventajaConfianza
 
             });
 
         }
 
 
-        /*
-         * Señal de rendimiento general.
-
-         */
+        /*----------------------------------------------------------
+            TOP 10
+        ----------------------------------------------------------*/
 
         if (
 
@@ -1732,7 +1962,8 @@ export default class MotorEvaluacion {
 
                 valor:
 
-                    metricas.porcentajeTop10,
+                    metricas
+                        .porcentajeTop10,
 
                 descripcion:
 
@@ -1752,7 +1983,8 @@ export default class MotorEvaluacion {
 
                 valor:
 
-                    metricas.porcentajeTop10,
+                    metricas
+                        .porcentajeTop10,
 
                 descripcion:
 
@@ -1763,10 +1995,9 @@ export default class MotorEvaluacion {
         }
 
 
-        /*
-         * Diferencia entre Top 10 y Top 20.
-
-         */
+        /*----------------------------------------------------------
+            VALOR FUERA TOP 10
+        ----------------------------------------------------------*/
 
         if (
 
@@ -1784,9 +2015,11 @@ export default class MotorEvaluacion {
 
                 diferencia:
 
-                    metricas.aciertosTop20 -
+                    metricas
+                        .aciertosTop20 -
 
-                    metricas.aciertosTop10,
+                    metricas
+                        .aciertosTop10,
 
                 descripcion:
 
@@ -1797,10 +2030,9 @@ export default class MotorEvaluacion {
         }
 
 
-        /*
-         * Si no hubo ningún acierto.
-
-         */
+        /*----------------------------------------------------------
+            SIN ACIERTOS
+        ----------------------------------------------------------*/
 
         if (
 
@@ -1850,15 +2082,6 @@ export default class MotorEvaluacion {
 
     ) {
 
-        /*
-         * Esta estructura tiene como objetivo
-         * entregar a una IA un conjunto de datos
-         * limpio, estructurado y explicable.
-         *
-         * No se realizan conclusiones probabilísticas
-         * sobre el azar.
-         */
-
         return {
 
             tipo:
@@ -1873,7 +2096,8 @@ export default class MotorEvaluacion {
 
             fecha:
 
-                new Date().toISOString(),
+                new Date()
+                    .toISOString(),
 
 
             semana: {
@@ -1925,54 +2149,81 @@ export default class MotorEvaluacion {
                 ),
 
 
-            metricas, 
+            metricas,
 
 
             comportamientoRanking,
 
 
+            mejorMotor:
+
+                rendimientoMotores
+                    .mejorMotor,
+
+
             rendimientoMotores:
 
+                rendimientoMotores
+                    .rankingMotores
 
-                rendimientoMotores.rankingMotores.map(
+                    .map(
 
-                    motor => ({
+                        motor => ({
 
-                        motor:
+                            motor:
 
-                            motor.motor,
+                                motor.motor,
 
-                        apariciones:
+                            apariciones:
 
-                            motor.apariciones,
+                                motor.apariciones,
 
-                        aciertos:
+                            aciertos:
 
-                            motor.aciertos,
+                                motor.aciertos,
 
-                        tasaAcierto:
+                            tasaAcierto:
 
-                            motor.tasaAcierto,
+                                motor.tasaAcierto,
 
-                        promedioScore:
+                            promedioScore:
 
-                            motor.promedioScore,
+                                motor
+                                    .promedioScore,
 
-                        promedioScoreAciertos:
+                            promedioScoreAciertos:
 
-                            motor.promedioScoreAciertos,
+                                motor
+                                    .promedioScoreAciertos,
 
-                        promedioConfianza:
+                            ventajaScore:
 
-                            motor.promedioConfianza,
+                                motor
+                                    .ventajaScore,
 
-                        promedioConfianzaAciertos:
+                            promedioConfianza:
 
-                            motor.promedioConfianzaAciertos
+                                motor
+                                    .promedioConfianza,
 
-                    })
+                            promedioConfianzaAciertos:
 
-                ),
+                                motor
+                                    .promedioConfianzaAciertos,
+
+                            ventajaConfianza:
+
+                                motor
+                                    .ventajaConfianza,
+
+                            indiceDiscriminacion:
+
+                                motor
+                                    .indiceDiscriminacion
+
+                        })
+
+                    ),
 
 
             señalesOptimizacion,
@@ -2148,7 +2399,8 @@ export default class MotorEvaluacion {
 
             const comportamiento =
 
-                evaluacion.comportamientoRanking ||
+                evaluacion
+                    .comportamientoRanking ||
 
                 {};
 
@@ -2157,7 +2409,8 @@ export default class MotorEvaluacion {
 
                 this.numeroSeguro(
 
-                    metricas.aciertosTop10
+                    metricas
+                        .aciertosTop10
 
                 );
 
@@ -2166,7 +2419,8 @@ export default class MotorEvaluacion {
 
                 this.numeroSeguro(
 
-                    metricas.aciertosTop20
+                    metricas
+                        .aciertosTop20
 
                 );
 
@@ -2175,7 +2429,8 @@ export default class MotorEvaluacion {
 
                 this.numeroSeguro(
 
-                    metricas.aciertosTitulares
+                    metricas
+                        .aciertosTitulares
 
                 );
 
@@ -2184,7 +2439,8 @@ export default class MotorEvaluacion {
 
                 this.numeroSeguro(
 
-                    metricas.aciertosSuplentes
+                    metricas
+                        .aciertosSuplentes
 
                 );
 
@@ -2193,26 +2449,24 @@ export default class MotorEvaluacion {
 
                 this.numeroSeguro(
 
-                    comportamiento.cobertura
+                    comportamiento
+                        .cobertura
 
                 );
 
 
-            /*
-             * Acumulamos información de motores.
-
-             */
-
             const rendimiento =
 
-                evaluacion.rendimientoMotores ||
+                evaluacion
+                    .rendimientoMotores ||
 
                 {};
 
 
             const listaMotores =
 
-                rendimiento.rankingMotores ||
+                rendimiento
+                    .rankingMotores ||
 
                 [];
 
@@ -2254,11 +2508,35 @@ export default class MotorEvaluacion {
 
                             0,
 
+                        sumaTasaAcierto:
+
+                            0,
+
+                        sumaVentajaScore:
+
+                            0,
+
+                        sumaVentajaConfianza:
+
+                            0,
+
+                        sumaIndiceDiscriminacion:
+
+                            0,
+
                         promedioTasaAcierto:
 
                             0,
 
-                        sumaTasaAcierto:
+                        promedioVentajaScore:
+
+                            0,
+
+                        promedioVentajaConfianza:
+
+                            0,
+
+                        promedioIndiceDiscriminacion:
 
                             0
 
@@ -2267,44 +2545,77 @@ export default class MotorEvaluacion {
                 }
 
 
-                motores[clave].semanas++;
+                motores[clave]
+                    .semanas++;
 
 
-                motores[clave].aciertos +=
+                motores[clave]
+                    .aciertos +=
 
-                    this.numeroSeguro(
+                        this.numeroSeguro(
 
-                        motor.aciertos
+                            motor.aciertos
 
-                    );
-
-
-                motores[clave].apariciones +=
-
-                    this.numeroSeguro(
-
-                        motor.apariciones
-
-                    );
+                        );
 
 
-                motores[clave].sumaTasaAcierto +=
+                motores[clave]
+                    .apariciones +=
 
-                    this.numeroSeguro(
+                        this.numeroSeguro(
 
-                        motor.tasaAcierto
+                            motor.apariciones
 
-                    );
+                        );
+
+
+                motores[clave]
+                    .sumaTasaAcierto +=
+
+                        this.numeroSeguro(
+
+                            motor.tasaAcierto
+
+                        );
+
+
+                motores[clave]
+                    .sumaVentajaScore +=
+
+                        this.numeroSeguro(
+
+                            motor.ventajaScore
+
+                        );
+
+
+                motores[clave]
+                    .sumaVentajaConfianza +=
+
+                        this.numeroSeguro(
+
+                            motor.ventajaConfianza
+
+                        );
+
+
+                motores[clave]
+                    .sumaIndiceDiscriminacion +=
+
+                        this.numeroSeguro(
+
+                            motor.indiceDiscriminacion
+
+                        );
 
             }
 
         }
 
 
-        /*
-         * Promedios de motores.
-
-         */
+        /*----------------------------------------------------------
+            PROMEDIOS POR MOTOR
+        ----------------------------------------------------------*/
 
         for (
 
@@ -2323,7 +2634,8 @@ export default class MotorEvaluacion {
 
                     ? this.redondear(
 
-                        motor.sumaTasaAcierto /
+                        motor
+                            .sumaTasaAcierto /
 
                         motor.semanas,
 
@@ -2334,7 +2646,74 @@ export default class MotorEvaluacion {
                     : 0;
 
 
-            delete motor.sumaTasaAcierto;
+            motor.promedioVentajaScore =
+
+                motor.semanas > 0
+
+                    ? this.redondear(
+
+                        motor
+                            .sumaVentajaScore /
+
+                        motor.semanas,
+
+                        6
+
+                    )
+
+                    : 0;
+
+
+            motor.promedioVentajaConfianza =
+
+                motor.semanas > 0
+
+                    ? this.redondear(
+
+                        motor
+                            .sumaVentajaConfianza /
+
+                        motor.semanas,
+
+                        6
+
+                    )
+
+                    : 0;
+
+
+            motor.promedioIndiceDiscriminacion =
+
+                motor.semanas > 0
+
+                    ? this.redondear(
+
+                        motor
+                            .sumaIndiceDiscriminacion /
+
+                        motor.semanas,
+
+                        6
+
+                    )
+
+                    : 0;
+
+
+            delete motor
+                .sumaTasaAcierto;
+
+
+            delete motor
+                .sumaVentajaScore;
+
+
+            delete motor
+                .sumaVentajaConfianza;
+
+
+            delete motor
+                .sumaIndiceDiscriminacion;
 
         }
 
@@ -2449,7 +2828,6 @@ export default class MotorEvaluacion {
             cantidad >=
 
             this.configuracion
-
                 .minimoSemanasParaOptimizacion
 
         );
@@ -2500,9 +2878,11 @@ export default class MotorEvaluacion {
 
                     this.redondear(
 
-                        actual.promedioAciertosTop10 -
+                        actual
+                            .promedioAciertosTop10 -
 
-                        anterior.promedioAciertosTop10,
+                        anterior
+                            .promedioAciertosTop10,
 
                         6
 
@@ -2513,9 +2893,11 @@ export default class MotorEvaluacion {
 
                     this.redondear(
 
-                        actual.promedioAciertosTop20 -
+                        actual
+                            .promedioAciertosTop20 -
 
-                        anterior.promedioAciertosTop20,
+                        anterior
+                            .promedioAciertosTop20,
 
                         6
 
@@ -2526,9 +2908,11 @@ export default class MotorEvaluacion {
 
                     this.redondear(
 
-                        actual.promedioAciertosTitulares -
+                        actual
+                            .promedioAciertosTitulares -
 
-                        anterior.promedioAciertosTitulares,
+                        anterior
+                            .promedioAciertosTitulares,
 
                         6
 
@@ -2539,9 +2923,11 @@ export default class MotorEvaluacion {
 
                     this.redondear(
 
-                        actual.promedioAciertosSuplentes -
+                        actual
+                            .promedioAciertosSuplentes -
 
-                        anterior.promedioAciertosSuplentes,
+                        anterior
+                            .promedioAciertosSuplentes,
 
                         6
 
@@ -2552,9 +2938,11 @@ export default class MotorEvaluacion {
 
                     this.redondear(
 
-                        actual.promedioCoberturaRanking -
+                        actual
+                            .promedioCoberturaRanking -
 
-                        anterior.promedioCoberturaRanking,
+                        anterior
+                            .promedioCoberturaRanking,
 
                         6
 
@@ -2611,7 +2999,9 @@ export default class MotorEvaluacion {
 
             Math.floor(
 
-                lista.length / 2
+                lista.length /
+
+                2
 
             );
 
@@ -2905,7 +3295,11 @@ export default class MotorEvaluacion {
                 );
 
 
-        return `evaluacion_${fecha}_${aleatorio}`;
+        return (
+
+            `evaluacion_${fecha}_${aleatorio}`
+
+        );
 
     }
 
@@ -2933,7 +3327,6 @@ export default class MotorEvaluacion {
             minimoSemanasParaOptimizacion:
 
                 this.configuracion
-
                     .minimoSemanasParaOptimizacion,
 
             datosSuficientesParaOptimizar:
@@ -2952,6 +3345,8 @@ export default class MotorEvaluacion {
     limpiarHistorial() {
 
         this.historial = [];
+
+        return true;
 
     }
 

@@ -8,6 +8,9 @@
  *
  * Componentes integrados:
  *
+ *   - HistorialService
+ *   - EstadisticasService
+ *
  *   - BaseMotor
  *   - MotorFrecuencia
  *   - MotorAtraso
@@ -19,8 +22,11 @@
  *   - MotorDistribucion
  *   - MotorAsociaciones
  *   - MotorCiclos
+ *
  *   - MotorManager
  *   - MotorRanking
+ *   - MotorEvaluacion
+ *   - MotorEvolucion
  *
  **********************************************************************/
 
@@ -69,15 +75,22 @@ import MotorAsociaciones
 import MotorCiclos
     from "./motores/MotorCiclos.js";
 
+
 import MotorManager
     from "./motores/MotorManager.js";
 
 import MotorRanking
     from "./motores/MotorRanking.js";
 
+import MotorEvaluacion
+    from "./motores/MotorEvaluacion.js";
+
+import MotorEvolucion
+    from "./motores/MotorEvolucion.js";
+
 
 /*====================================================================
-    CLASE ENTORNO DE PRUEBAS
+    CLASE ENTORNO PRUEBAS
 ====================================================================*/
 
 class EntornoPruebas {
@@ -86,7 +99,7 @@ class EntornoPruebas {
     constructor() {
 
         /*==========================================================
-            ESTADO
+            ESTADO GENERAL
         ==========================================================*/
 
         this.inicializado = false;
@@ -111,7 +124,7 @@ class EntornoPruebas {
 
 
         /*==========================================================
-            MOTORES INDIVIDUALES
+            MOTORES
         ==========================================================*/
 
         this.baseMotor = null;
@@ -145,12 +158,22 @@ class EntornoPruebas {
 
         this.motorRanking = null;
 
+        this.motorEvaluacion = null;
+
+        this.motorEvolucion = null;
+
 
         /*==========================================================
-            ÚLTIMO RANKING
+            RESULTADOS TEMPORALES
         ==========================================================*/
 
         this.ultimoRanking = null;
+
+        this.ultimaPrediccion = null;
+
+        this.ultimaEvaluacion = null;
+
+        this.ultimaEvolucion = null;
 
     }
 
@@ -479,6 +502,66 @@ class EntornoPruebas {
 
 
             /*========================================================
+                MOTOR EVALUACIÓN
+            ========================================================*/
+
+            this.motorEvaluacion =
+                new MotorEvaluacion({
+
+                    cantidadNumerosEsperados:
+                        10,
+
+                    minimoSemanasParaOptimizacion:
+                        20
+
+                });
+
+
+            console.log(
+                "MotorEvaluacion inicializado."
+            );
+
+
+            /*========================================================
+                MOTOR EVOLUCIÓN
+            ========================================================*/
+
+            this.motorEvolucion =
+                new MotorEvolucion({
+
+                    minimoEvaluaciones:
+                        20,
+
+                    periodoReciente:
+                        10,
+
+                    cantidadPeriodos:
+                        5,
+
+                    umbralCambio:
+                        5,
+
+                    umbralCambioFuerte:
+                        15,
+
+                    umbralDiscriminacion:
+                        2,
+
+                    minimoIndicePositivo:
+                        1,
+
+                    toleranciaEstabilidad:
+                        1
+
+                });
+
+
+            console.log(
+                "MotorEvolucion inicializado."
+            );
+
+
+            /*========================================================
                 FINAL
             ========================================================*/
 
@@ -553,7 +636,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        OBTENER ARRAY DE ESTADÍSTICAS
+        ARRAY ESTADÍSTICAS
     ================================================================*/
 
     obtenerArrayEstadisticas() {
@@ -567,7 +650,8 @@ class EntornoPruebas {
 
         if (
             Array.isArray(
-                this.datosEstadisticas.estadisticas
+                this.datosEstadisticas
+                    .estadisticas
             )
         ) {
 
@@ -578,13 +662,19 @@ class EntornoPruebas {
 
 
         if (
-            this.datosEstadisticas.estadisticas &&
-            typeof this.datosEstadisticas.estadisticas ===
+            this.datosEstadisticas
+                .estadisticas &&
+
+            typeof this.datosEstadisticas
+                .estadisticas ===
                 "object"
         ) {
 
             return Object.values(
-                this.datosEstadisticas.estadisticas
+
+                this.datosEstadisticas
+                    .estadisticas
+
             );
 
         }
@@ -650,7 +740,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        CONTEXTO ESTÁNDAR
+        CONTEXTO
     ================================================================*/
 
     crearContexto(
@@ -679,7 +769,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        FRECUENCIA
+        MOTORES INDIVIDUALES
     ================================================================*/
 
     frecuencia(
@@ -690,22 +780,19 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        return this.motorFrecuencia.calcular(
+        return this.motorFrecuencia
+            .calcular(
 
-            numero,
+                numero,
 
-            this.crearContexto(
-                configuracion
-            )
+                this.crearContexto(
+                    configuracion
+                )
 
-        );
+            );
 
     }
 
-
-    /*================================================================
-        ATRASO
-    ================================================================*/
 
     atraso(
         numero,
@@ -715,22 +802,19 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        return this.motorAtraso.calcular(
+        return this.motorAtraso
+            .calcular(
 
-            numero,
+                numero,
 
-            this.crearContexto(
-                configuracion
-            )
+                this.crearContexto(
+                    configuracion
+                )
 
-        );
+            );
 
     }
 
-
-    /*================================================================
-        TENDENCIA
-    ================================================================*/
 
     tendencia(
         numero,
@@ -740,22 +824,19 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        return this.motorTendencia.calcular(
+        return this.motorTendencia
+            .calcular(
 
-            numero,
+                numero,
 
-            this.crearContexto(
-                configuracion
-            )
+                this.crearContexto(
+                    configuracion
+                )
 
-        );
+            );
 
     }
 
-
-    /*================================================================
-        REPETICIÓN
-    ================================================================*/
 
     repeticion(
         numero,
@@ -765,22 +846,19 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        return this.motorRepeticion.calcular(
+        return this.motorRepeticion
+            .calcular(
 
-            numero,
+                numero,
 
-            this.crearContexto(
-                configuracion
-            )
+                this.crearContexto(
+                    configuracion
+                )
 
-        );
+            );
 
     }
 
-
-    /*================================================================
-        HISTÓRICO
-    ================================================================*/
 
     historico(
         numero,
@@ -790,22 +868,19 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        return this.motorHistorico.calcular(
+        return this.motorHistorico
+            .calcular(
 
-            numero,
+                numero,
 
-            this.crearContexto(
-                configuracion
-            )
+                this.crearContexto(
+                    configuracion
+                )
 
-        );
+            );
 
     }
 
-
-    /*================================================================
-        PARIDAD
-    ================================================================*/
 
     paridad(
         numero,
@@ -815,22 +890,19 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        return this.motorParidad.calcular(
+        return this.motorParidad
+            .calcular(
 
-            numero,
+                numero,
 
-            this.crearContexto(
-                configuracion
-            )
+                this.crearContexto(
+                    configuracion
+                )
 
-        );
+            );
 
     }
 
-
-    /*================================================================
-        RANGOS
-    ================================================================*/
 
     rangos(
         numero,
@@ -840,22 +912,19 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        return this.motorRangos.calcular(
+        return this.motorRangos
+            .calcular(
 
-            numero,
+                numero,
 
-            this.crearContexto(
-                configuracion
-            )
+                this.crearContexto(
+                    configuracion
+                )
 
-        );
+            );
 
     }
 
-
-    /*================================================================
-        DISTRIBUCIÓN
-    ================================================================*/
 
     distribucion(
         numero,
@@ -865,22 +934,19 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        return this.motorDistribucion.calcular(
+        return this.motorDistribucion
+            .calcular(
 
-            numero,
+                numero,
 
-            this.crearContexto(
-                configuracion
-            )
+                this.crearContexto(
+                    configuracion
+                )
 
-        );
+            );
 
     }
 
-
-    /*================================================================
-        ASOCIACIONES
-    ================================================================*/
 
     asociaciones(
         numero,
@@ -890,22 +956,19 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        return this.motorAsociaciones.calcular(
+        return this.motorAsociaciones
+            .calcular(
 
-            numero,
+                numero,
 
-            this.crearContexto(
-                configuracion
-            )
+                this.crearContexto(
+                    configuracion
+                )
 
-        );
+            );
 
     }
 
-
-    /*================================================================
-        CICLOS
-    ================================================================*/
 
     ciclos(
         numero,
@@ -915,21 +978,22 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        return this.motorCiclos.calcular(
+        return this.motorCiclos
+            .calcular(
 
-            numero,
+                numero,
 
-            this.crearContexto(
-                configuracion
-            )
+                this.crearContexto(
+                    configuracion
+                )
 
-        );
+            );
 
     }
 
 
     /*================================================================
-        MANAGER
+        MOTOR MANAGER
     ================================================================*/
 
     manager(
@@ -952,10 +1016,6 @@ class EntornoPruebas {
     }
 
 
-    /*================================================================
-        MANAGER - TODOS
-    ================================================================*/
-
     managerTodos(
         configuracion = {}
     ) {
@@ -970,10 +1030,6 @@ class EntornoPruebas {
 
     }
 
-
-    /*================================================================
-        MANAGER - TOP PROVISIONAL
-    ================================================================*/
 
     topManager(
         cantidad = 20,
@@ -996,7 +1052,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        GENERAR RANKING FINAL
+        MOTOR RANKING
     ================================================================*/
 
     generarRanking(
@@ -1007,29 +1063,21 @@ class EntornoPruebas {
         this.verificarInicializacion();
 
 
-        /*
-         * Primero analizamos los 100 números.
-         */
-
         const resultadosManager =
-            this.motorManager
-                .analizarTodos(
-                    configuracionManager
-                );
+            this.managerTodos(
+                configuracionManager
+            );
 
-
-        /*
-         * MotorRanking organiza esos resultados.
-         */
 
         const ranking =
-            this.motorRanking.generar(
+            this.motorRanking
+                .generar(
 
-                resultadosManager,
+                    resultadosManager,
 
-                opciones
+                    opciones
 
-            );
+                );
 
 
         this.ultimoRanking =
@@ -1040,10 +1088,6 @@ class EntornoPruebas {
 
     }
 
-
-    /*================================================================
-        OBTENER ÚLTIMO RANKING
-    ================================================================*/
 
     ranking() {
 
@@ -1062,110 +1106,393 @@ class EntornoPruebas {
     }
 
 
-    /*================================================================
-        TOP 10
-    ================================================================*/
-
     top10() {
 
-        const ranking =
-            this.ranking();
-
-
-        return ranking.top10;
+        return this.ranking()
+            .top10;
 
     }
 
-
-    /*================================================================
-        TOP 20
-    ================================================================*/
 
     top20() {
 
-        const ranking =
-            this.ranking();
-
-
-        return ranking.top20;
+        return this.ranking()
+            .top20;
 
     }
 
-
-    /*================================================================
-        EQUIPO TITULAR
-    ================================================================*/
 
     titulares() {
 
-        const ranking =
-            this.ranking();
-
-
-        return ranking.equipoTitular;
+        return this.ranking()
+            .equipoTitular;
 
     }
 
-
-    /*================================================================
-        EQUIPO SUPLENTE
-    ================================================================*/
 
     suplentes() {
 
-        const ranking =
-            this.ranking();
-
-
-        return ranking.equipoSuplente;
+        return this.ranking()
+            .equipoSuplente;
 
     }
 
 
     /*================================================================
-        PREPARAR PREDICCIÓN
+        PREDICCIÓN
     ================================================================*/
 
     prepararPrediccion(
         datosSemana = {}
     ) {
 
+        this.verificarInicializacion();
+
+
         const ranking =
             this.ranking();
 
 
-        return this.motorRanking
-            .prepararPrediccion(
+        const prediccion =
+            this.motorRanking
+                .prepararPrediccion(
 
-                ranking,
+                    ranking,
 
-                datosSemana
+                    datosSemana
 
+                );
+
+
+        this.ultimaPrediccion =
+            prediccion;
+
+
+        return prediccion;
+
+    }
+
+
+    prediccion() {
+
+        this.verificarInicializacion();
+
+        return this.ultimaPrediccion;
+
+    }
+
+
+    /*================================================================
+        MOTOR EVALUACIÓN
+    ================================================================*/
+
+    evaluar(
+        numerosReales,
+        datosSemana = {},
+        prediccion = null
+    ) {
+
+        this.verificarInicializacion();
+
+
+        let prediccionEvaluar =
+            prediccion ||
+            this.ultimaPrediccion;
+
+
+        if (!prediccionEvaluar) {
+
+            prediccionEvaluar =
+                this.prepararPrediccion(
+                    datosSemana
+                );
+
+        }
+
+
+        const evaluacion =
+            this.motorEvaluacion
+                .evaluar(
+
+                    prediccionEvaluar,
+
+                    numerosReales,
+
+                    datosSemana
+
+                );
+
+
+        this.ultimaEvaluacion =
+            evaluacion;
+
+
+        /*
+         * Cada nueva evaluación invalida
+         * el último análisis evolutivo,
+         * porque ahora existe nueva evidencia.
+         */
+
+        this.ultimaEvolucion =
+            null;
+
+
+        return evaluacion;
+
+    }
+
+
+    evaluacion() {
+
+        this.verificarInicializacion();
+
+        return this.ultimaEvaluacion;
+
+    }
+
+
+    evaluaciones() {
+
+        this.verificarInicializacion();
+
+
+        return this.motorEvaluacion
+            .obtenerHistorial();
+
+    }
+
+
+    resumenEvaluaciones(
+        evaluaciones = null
+    ) {
+
+        this.verificarInicializacion();
+
+
+        return this.motorEvaluacion
+            .generarResumenAcumulado(
+                evaluaciones
+            );
+
+    }
+
+
+    hayDatosParaOptimizar(
+        cantidadSemanas = null
+    ) {
+
+        this.verificarInicializacion();
+
+
+        return this.motorEvaluacion
+            .hayDatosParaOptimizar(
+                cantidadSemanas
             );
 
     }
 
 
     /*================================================================
-        EVALUAR PREDICCIÓN
+        MOTOR EVOLUCIÓN
     ================================================================*/
 
-    evaluarPrediccion(
-        prediccion,
-        numerosReales
+    evolucion(
+        evaluaciones = null,
+        opciones = {}
     ) {
 
         this.verificarInicializacion();
 
 
-        return this.motorRanking
-            .evaluarPrediccion(
+        const lista =
 
-                prediccion,
+            Array.isArray(
+                evaluaciones
+            )
 
-                numerosReales
+                ? evaluaciones
 
+                : this.motorEvaluacion
+                    .obtenerHistorial();
+
+
+        const resultado =
+            this.motorEvolucion
+                .analizar(
+
+                    lista,
+
+                    opciones
+
+                );
+
+
+        this.ultimaEvolucion =
+            resultado;
+
+
+        return resultado;
+
+    }
+
+
+    /*================================================================
+        ÚLTIMA EVOLUCIÓN
+    ================================================================*/
+
+    obtenerEvolucion() {
+
+        this.verificarInicializacion();
+
+
+        if (!this.ultimaEvolucion) {
+
+            return this.evolucion();
+
+        }
+
+
+        return this.ultimaEvolucion;
+
+    }
+
+
+    /*================================================================
+        ESTADO MOTOR EVOLUCIÓN
+    ================================================================*/
+
+    estadoEvolucion() {
+
+        this.verificarInicializacion();
+
+
+        const cantidadEvaluaciones =
+            this.motorEvaluacion
+                .obtenerHistorial()
+                .length;
+
+
+        return this.motorEvolucion
+            .obtenerEstado(
+                cantidadEvaluaciones
             );
+
+    }
+
+
+    /*================================================================
+        RANKING EVOLUTIVO DE MOTORES
+    ================================================================*/
+
+    rankingMotoresEvolucion() {
+
+        const resultado =
+            this.obtenerEvolucion();
+
+
+        return resultado
+            .rankingMotores ||
+            [];
+
+    }
+
+
+    /*================================================================
+        MEJOR MOTOR HISTÓRICO
+    ================================================================*/
+
+    mejorMotorHistorico() {
+
+        const resultado =
+            this.obtenerEvolucion();
+
+
+        return resultado
+            .mejorMotorHistorico;
+
+    }
+
+
+    /*================================================================
+        MEJOR MOTOR RECIENTE
+    ================================================================*/
+
+    mejorMotorReciente() {
+
+        const resultado =
+            this.obtenerEvolucion();
+
+
+        return resultado
+            .mejorMotorReciente;
+
+    }
+
+
+    /*================================================================
+        MOTORES CONSISTENTES
+    ================================================================*/
+
+    motoresConsistentes() {
+
+        const resultado =
+            this.obtenerEvolucion();
+
+
+        return resultado
+            .motoresConsistentes ||
+            [];
+
+    }
+
+
+    /*================================================================
+        MOTORES EN MEJORA
+    ================================================================*/
+
+    motoresEnMejora() {
+
+        const resultado =
+            this.obtenerEvolucion();
+
+
+        return resultado
+            .motoresEnMejora ||
+            [];
+
+    }
+
+
+    /*================================================================
+        MOTORES EN DETERIORO
+    ================================================================*/
+
+    motoresEnDeterioro() {
+
+        const resultado =
+            this.obtenerEvolucion();
+
+
+        return resultado
+            .motoresEnDeterioro ||
+            [];
+
+    }
+
+
+    /*================================================================
+        SEÑALES EVOLUCIÓN
+    ================================================================*/
+
+    señalesEvolucion() {
+
+        const resultado =
+            this.obtenerEvolucion();
+
+
+        return resultado
+            .señalesOptimizacion ||
+            [];
 
     }
 
@@ -1174,7 +1501,9 @@ class EntornoPruebas {
         ANALIZAR NÚMERO COMPLETO
     ================================================================*/
 
-    analizarNumero(numero) {
+    analizarNumero(
+        numero
+    ) {
 
         this.verificarInicializacion();
 
@@ -1223,10 +1552,18 @@ class EntornoPruebas {
 
 
     /*================================================================
-        INFORMACIÓN DEL SISTEMA
+        INFORMACIÓN GENERAL
     ================================================================*/
 
     informacion() {
+
+        const cantidadEvaluaciones =
+            this.motorEvaluacion
+                ? this.motorEvaluacion
+                    .obtenerHistorial()
+                    .length
+                : 0;
+
 
         return {
 
@@ -1243,60 +1580,72 @@ class EntornoPruebas {
                 this.obtenerArrayEstadisticas()
                     .length,
 
+
             baseMotor:
                 this.obtenerInformacionMotor(
                     this.baseMotor
                 ),
+
 
             motorFrecuencia:
                 this.obtenerInformacionMotor(
                     this.motorFrecuencia
                 ),
 
+
             motorAtraso:
                 this.obtenerInformacionMotor(
                     this.motorAtraso
                 ),
+
 
             motorTendencia:
                 this.obtenerInformacionMotor(
                     this.motorTendencia
                 ),
 
+
             motorRepeticion:
                 this.obtenerInformacionMotor(
                     this.motorRepeticion
                 ),
+
 
             motorHistorico:
                 this.obtenerInformacionMotor(
                     this.motorHistorico
                 ),
 
+
             motorParidad:
                 this.obtenerInformacionMotor(
                     this.motorParidad
                 ),
+
 
             motorRangos:
                 this.obtenerInformacionMotor(
                     this.motorRangos
                 ),
 
+
             motorDistribucion:
                 this.obtenerInformacionMotor(
                     this.motorDistribucion
                 ),
+
 
             motorAsociaciones:
                 this.obtenerInformacionMotor(
                     this.motorAsociaciones
                 ),
 
+
             motorCiclos:
                 this.obtenerInformacionMotor(
                     this.motorCiclos
                 ),
+
 
             motorManager:
                 this.motorManager
@@ -1304,14 +1653,47 @@ class EntornoPruebas {
                         .obtenerInformacion()
                     : null,
 
+
             motorRanking:
                 this.motorRanking
                     ? this.motorRanking
                         .obtenerEstado()
                     : null,
 
+
+            motorEvaluacion:
+                this.motorEvaluacion
+                    ? this.motorEvaluacion
+                        .obtenerEstado()
+                    : null,
+
+
+            motorEvolucion:
+                this.motorEvolucion
+                    ? this.motorEvolucion
+                        .obtenerEstado(
+                            cantidadEvaluaciones
+                        )
+                    : null,
+
+
             rankingGenerado:
                 this.ultimoRanking !==
+                null,
+
+
+            prediccionGenerada:
+                this.ultimaPrediccion !==
+                null,
+
+
+            evaluacionGenerada:
+                this.ultimaEvaluacion !==
+                null,
+
+
+            evolucionGenerada:
+                this.ultimaEvolucion !==
                 null
 
         };
@@ -1348,10 +1730,12 @@ class EntornoPruebas {
         return {
 
             nombre:
-                motor.nombre ?? null,
+                motor.nombre ??
+                null,
 
             version:
-                motor.version ?? null
+                motor.version ??
+                null
 
         };
 
@@ -1359,7 +1743,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        CALCULAR NÚMEROS ANALIZADOS
+        NÚMEROS ANALIZADOS
     ================================================================*/
 
     calcularNumerosAnalizados() {
@@ -1391,7 +1775,9 @@ class EntornoPruebas {
             ) {
 
                 const valor =
-                    Number(numero);
+                    Number(
+                        numero
+                    );
 
 
                 if (
@@ -1419,7 +1805,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        RECARGAR
+        RECARGAR ENTORNO
     ================================================================*/
 
     async recargar() {
@@ -1437,13 +1823,25 @@ class EntornoPruebas {
             null;
 
 
+        this.ultimaPrediccion =
+            null;
+
+
+        this.ultimaEvaluacion =
+            null;
+
+
+        this.ultimaEvolucion =
+            null;
+
+
         return await this.inicializar();
 
     }
 
 
     /*================================================================
-        TABLA MANAGER - UN NÚMERO
+        TABLA MANAGER
     ================================================================*/
 
     tablaManager(
@@ -1522,7 +1920,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        TABLA RANKING FINAL
+        TABLA RANKING
     ================================================================*/
 
     tablaRanking(
@@ -1539,8 +1937,13 @@ class EntornoPruebas {
                 1,
 
                 Math.min(
-                    Number(cantidad) || 100,
-                    ranking.ranking.length
+
+                    Number(cantidad) ||
+                    100,
+
+                    ranking.ranking
+                        .length
+
                 )
 
             );
@@ -1548,10 +1951,12 @@ class EntornoPruebas {
 
         const tabla =
             ranking.ranking
+
                 .slice(
                     0,
                     limite
                 )
+
                 .map(
 
                     item => ({
@@ -1602,47 +2007,44 @@ class EntornoPruebas {
 
 
     /*================================================================
-        TABLA TOP 10 RANKING
+        TABLA TOP 10
     ================================================================*/
 
     tablaTop10() {
 
-        const top =
-            this.top10();
-
-
         const tabla =
-            top.map(
+            this.top10()
+                .map(
 
-                item => ({
+                    item => ({
 
-                    orden:
-                        item.orden,
+                        orden:
+                            item.orden,
 
-                    posicion:
-                        item.posicion,
+                        posicion:
+                            item.posicion,
 
-                    numero:
-                        item.numeroTexto,
+                        numero:
+                            item.numeroTexto,
 
-                    score:
-                        item.score,
+                        score:
+                            item.score,
 
-                    confianza:
-                        item.confianza,
+                        confianza:
+                            item.confianza,
 
-                    percentil:
-                        item.percentil,
+                        percentil:
+                            item.percentil,
 
-                    categoria:
-                        item.categoria,
+                        categoria:
+                            item.categoria,
 
-                    empate:
-                        item.empate
+                        empate:
+                            item.empate
 
-                })
+                    })
 
-            );
+                );
 
 
         console.table(
@@ -1656,137 +2058,96 @@ class EntornoPruebas {
 
 
     /*================================================================
-        TABLA TOP 20 RANKING
+        TABLA TOP 20
     ================================================================*/
 
     tablaTop20() {
 
-        const top =
-            this.top20();
+        const tabla =
+            this.top20()
+                .map(
+
+                    item => ({
+
+                        orden:
+                            item.orden,
+
+                        posicion:
+                            item.posicion,
+
+                        numero:
+                            item.numeroTexto,
+
+                        score:
+                            item.score,
+
+                        confianza:
+                            item.confianza,
+
+                        percentil:
+                            item.percentil,
+
+                        categoria:
+                            item.categoria,
+
+                        empate:
+                            item.empate
+
+                    })
+
+                );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA EMPATES
+    ================================================================*/
+
+    tablaEmpates() {
+
+        const ranking =
+            this.ranking();
 
 
         const tabla =
-            top.map(
+            ranking.ranking
 
-                item => ({
-
-                    orden:
-                        item.orden,
-
-                    posicion:
-                        item.posicion,
-
-                    numero:
-                        item.numeroTexto,
-
-                    score:
-                        item.score,
-
-                    confianza:
-                        item.confianza,
-
-                    percentil:
-                        item.percentil,
-
-                    categoria:
-                        item.categoria,
-
-                    empate:
+                .filter(
+                    item =>
                         item.empate
+                )
 
-                })
+                .map(
 
-            );
+                    item => ({
 
+                        orden:
+                            item.orden,
 
-        console.table(
-            tabla
-        );
+                        posicion:
+                            item.posicion,
 
+                        numero:
+                            item.numeroTexto,
 
-        return tabla;
+                        score:
+                            item.score,
 
-    }
+                        confianza:
+                            item.confianza
 
+                    })
 
-    /*================================================================
-        TABLA EQUIPO TITULAR
-    ================================================================*/
-
-    tablaTitulares() {
-
-        const lista =
-            this.titulares();
-
-
-        const tabla =
-            lista.map(
-
-                item => ({
-
-                    posicion:
-                        item.posicion,
-
-                    numero:
-                        item.numeroTexto,
-
-                    score:
-                        item.score,
-
-                    confianza:
-                        item.confianza,
-
-                    categoria:
-                        item.categoria
-
-                })
-
-            );
-
-
-        console.table(
-            tabla
-        );
-
-
-        return tabla;
-
-    }
-
-
-    /*================================================================
-        TABLA EQUIPO SUPLENTE
-    ================================================================*/
-
-    tablaSuplentes() {
-
-        const lista =
-            this.suplentes();
-
-
-        const tabla =
-            lista.map(
-
-                item => ({
-
-                    posicion:
-                        item.posicion,
-
-                    numero:
-                        item.numeroTexto,
-
-                    score:
-                        item.score,
-
-                    confianza:
-                        item.confianza,
-
-                    categoria:
-                        item.categoria
-
-                })
-
-            );
+                );
 
 
         console.table(
@@ -1805,22 +2166,23 @@ class EntornoPruebas {
 
     tablaEstadisticasRanking() {
 
-        const ranking =
-            this.ranking();
+        const resultado =
+            this.ranking()
+                .estadisticas;
 
 
         console.table(
-            ranking.estadisticas
+            resultado
         );
 
 
-        return ranking.estadisticas;
+        return resultado;
 
     }
 
 
     /*================================================================
-        TABLA DISTRIBUCIÓN DEL RANKING
+        TABLA DISTRIBUCIÓN RANKING
     ================================================================*/
 
     tablaDistribucionRanking() {
@@ -1871,7 +2233,7 @@ class EntornoPruebas {
 
 
     /*================================================================
-        DETALLE DE UN NÚMERO EN EL RANKING
+        DETALLE RANKING
     ================================================================*/
 
     detalleRanking(
@@ -1901,7 +2263,7 @@ class EntornoPruebas {
         if (!item) {
 
             console.warn(
-                "Número no encontrado en el ranking:",
+                "Número no encontrado:",
                 numero
             );
 
@@ -1918,8 +2280,10 @@ class EntornoPruebas {
         console.table(
 
             Object.entries(
+
                 item.resumenMotores ||
                 {}
+
             ).map(
 
                 (
@@ -1957,57 +2321,832 @@ class EntornoPruebas {
 
 
     /*================================================================
-        COMPROBAR EMPATES
+        TABLA GRUPOS EVALUACIÓN
     ================================================================*/
 
-    tablaEmpates() {
+    tablaGruposEvaluacion(
+        evaluacion = null
+    ) {
 
-        const ranking =
-            this.ranking();
+        const resultado =
+            evaluacion ||
+            this.ultimaEvaluacion;
 
 
-        const empatados =
-            ranking.ranking
-                .filter(
-                    item =>
-                        item.empate
-                )
-                .map(
+        if (!resultado) {
 
-                    item => ({
+            return [];
 
-                        orden:
-                            item.orden,
+        }
 
-                        posicion:
-                            item.posicion,
 
-                        numero:
-                            item.numeroTexto,
+        const grupos =
+            resultado.grupos ||
+            {};
 
-                        score:
-                            item.score,
 
-                        confianza:
-                            item.confianza
+        const tabla =
+            Object.entries(
+                grupos
+            ).map(
 
-                    })
+                (
+                    [
+                        nombre,
+                        datos
+                    ]
+                ) => ({
 
-                );
+                    grupo:
+                        nombre,
+
+                    predichos:
+                        datos.cantidadPredicha,
+
+                    reales:
+                        datos.cantidadReales,
+
+                    aciertos:
+                        datos.aciertos,
+
+                    porcentaje:
+                        datos.porcentajeAcierto,
+
+                    numeros:
+                        Array.isArray(
+                            datos.numerosAcertados
+                        )
+
+                            ? datos
+                                .numerosAcertados
+                                .join(" - ")
+
+                            : ""
+
+                })
+
+            );
 
 
         console.table(
-            empatados
+            tabla
         );
 
 
-        return empatados;
+        return tabla;
 
     }
 
 
     /*================================================================
-        TABLA GENERAL DE UN NÚMERO
+        TABLA ACIERTOS
+    ================================================================*/
+
+    tablaAciertos(
+        evaluacion = null
+    ) {
+
+        const resultado =
+            evaluacion ||
+            this.ultimaEvaluacion;
+
+
+        if (!resultado) {
+
+            return [];
+
+        }
+
+
+        const tabla =
+            (
+                resultado
+                    .aciertosDetallados ||
+                []
+            ).map(
+
+                item => ({
+
+                    numero:
+                        item.numero,
+
+                    posicion:
+                        item.posicion,
+
+                    score:
+                        item.score,
+
+                    confianza:
+                        item.confianza,
+
+                    calidadPosicion:
+                        item.calidadPosicion,
+
+                    motores:
+                        item.cantidadMotores
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA COMPORTAMIENTO RANKING
+    ================================================================*/
+
+    tablaComportamientoRanking(
+        evaluacion = null
+    ) {
+
+        const resultado =
+            evaluacion ||
+            this.ultimaEvaluacion;
+
+
+        if (!resultado) {
+
+            return null;
+
+        }
+
+
+        console.table(
+            resultado
+                .comportamientoRanking
+        );
+
+
+        return resultado
+            .comportamientoRanking;
+
+    }
+
+
+    /*================================================================
+        TABLA RENDIMIENTO MOTORES
+    ================================================================*/
+
+    tablaRendimientoMotores(
+        evaluacion = null
+    ) {
+
+        const resultado =
+            evaluacion ||
+            this.ultimaEvaluacion;
+
+
+        if (
+            !resultado ||
+            !resultado.rendimientoMotores
+        ) {
+
+            return [];
+
+        }
+
+
+        const lista =
+            resultado
+                .rendimientoMotores
+                .rankingMotores ||
+            [];
+
+
+        const tabla =
+            lista.map(
+
+                (
+                    motor,
+                    indice
+                ) => ({
+
+                    posicion:
+                        indice + 1,
+
+                    motor:
+                        motor.motor,
+
+                    apariciones:
+                        motor.apariciones,
+
+                    aciertos:
+                        motor.aciertos,
+
+                    tasaAcierto:
+                        motor.tasaAcierto,
+
+                    promedioScore:
+                        motor.promedioScore,
+
+                    promedioScoreAciertos:
+                        motor.promedioScoreAciertos,
+
+                    ventajaScore:
+                        motor.ventajaScore,
+
+                    promedioConfianza:
+                        motor.promedioConfianza,
+
+                    promedioConfianzaAciertos:
+                        motor.promedioConfianzaAciertos,
+
+                    ventajaConfianza:
+                        motor.ventajaConfianza,
+
+                    indiceDiscriminacion:
+                        motor.indiceDiscriminacion
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA SEÑALES EVALUACIÓN
+    ================================================================*/
+
+    tablaSeñales(
+        evaluacion = null
+    ) {
+
+        const resultado =
+            evaluacion ||
+            this.ultimaEvaluacion;
+
+
+        if (!resultado) {
+
+            return [];
+
+        }
+
+
+        const señales =
+            resultado
+                .señalesOptimizacion ||
+            [];
+
+
+        console.table(
+            señales
+        );
+
+
+        return señales;
+
+    }
+
+
+    /*================================================================
+        TABLA RESUMEN EVALUACIONES
+    ================================================================*/
+
+    tablaResumenEvaluaciones() {
+
+        const resumen =
+            this.resumenEvaluaciones();
+
+
+        console.table([
+
+            {
+
+                cantidadSemanas:
+                    resumen
+                        .cantidadSemanas,
+
+                promedioTop10:
+                    resumen
+                        .promedioAciertosTop10,
+
+                promedioTop20:
+                    resumen
+                        .promedioAciertosTop20,
+
+                promedioTitulares:
+                    resumen
+                        .promedioAciertosTitulares,
+
+                promedioSuplentes:
+                    resumen
+                        .promedioAciertosSuplentes,
+
+                cobertura:
+                    resumen
+                        .promedioCoberturaRanking
+
+            }
+
+        ]);
+
+
+        return resumen;
+
+    }
+
+
+    /*================================================================
+        TABLA ESTADO EVOLUCIÓN
+    ================================================================*/
+
+    tablaEstadoEvolucion() {
+
+        const estado =
+            this.estadoEvolucion();
+
+
+        console.table(
+            estado
+        );
+
+
+        return estado;
+
+    }
+
+
+    /*================================================================
+        TABLA RANKING EVOLUTIVO DE MOTORES
+    ================================================================*/
+
+    tablaEvolucionMotores(
+        evolucion = null
+    ) {
+
+        const resultado =
+            evolucion ||
+            this.obtenerEvolucion();
+
+
+        const lista =
+            resultado
+                .rankingMotores ||
+            [];
+
+
+        const tabla =
+            lista.map(
+
+                (
+                    motor,
+                    indice
+                ) => ({
+
+                    posicion:
+                        motor
+                            .posicionEvolutiva ??
+                        indice + 1,
+
+                    motor:
+                        motor.motor,
+
+                    evaluaciones:
+                        motor
+                            .cantidadEvaluaciones,
+
+                    indiceHistorico:
+                        motor
+                            .promedioIndiceDiscriminacion,
+
+                    indiceReciente:
+                        motor
+                            .promedioIndiceReciente,
+
+                    indiceAnterior:
+                        motor
+                            .promedioIndiceAnterior,
+
+                    variacionIndice:
+                        motor
+                            .variacionIndiceReciente,
+
+                    ventajaScore:
+                        motor
+                            .promedioVentajaScore,
+
+                    ventajaScoreReciente:
+                        motor
+                            .promedioVentajaScoreReciente,
+
+                    ventajaConfianza:
+                        motor
+                            .promedioVentajaConfianza,
+
+                    tendencia:
+                        motor
+                            .tendenciaIndiceDiscriminacion
+                            ?.tendencia ??
+                        null,
+
+                    consistencia:
+                        motor.consistencia,
+
+                    consistente:
+                        motor.consistente,
+
+                    estado:
+                        motor.estado
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA RESUMEN EVOLUCIÓN
+    ================================================================*/
+
+    tablaResumenEvolucion(
+        evolucion = null
+    ) {
+
+        const resultado =
+            evolucion ||
+            this.obtenerEvolucion();
+
+
+        const tabla = [
+
+            {
+
+                evaluaciones:
+                    resultado
+                        .cantidadEvaluaciones,
+
+                minimo:
+                    resultado
+                        .minimoEvaluaciones,
+
+                datosSuficientes:
+                    resultado
+                        .datosSuficientes,
+
+                mejorHistorico:
+                    resultado
+                        .mejorMotorHistorico,
+
+                mejorReciente:
+                    resultado
+                        .mejorMotorReciente,
+
+                consistentes:
+                    (
+                        resultado
+                            .motoresConsistentes ||
+                        []
+                    ).length,
+
+                mejorando:
+                    (
+                        resultado
+                            .motoresEnMejora ||
+                        []
+                    ).length,
+
+                deteriorando:
+                    (
+                        resultado
+                            .motoresEnDeterioro ||
+                        []
+                    ).length
+
+            }
+
+        ];
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA TENDENCIAS EVOLUCIÓN
+    ================================================================*/
+
+    tablaTendenciasEvolucion(
+        evolucion = null
+    ) {
+
+        const resultado =
+            evolucion ||
+            this.obtenerEvolucion();
+
+
+        const tendencias =
+            resultado.tendencias ||
+            {};
+
+
+        const tabla =
+            Object.entries(
+                tendencias
+            ).map(
+
+                (
+                    [
+                        nombre,
+                        datos
+                    ]
+                ) => ({
+
+                    indicador:
+                        nombre,
+
+                    cantidad:
+                        datos.cantidad,
+
+                    promedio:
+                        datos.promedio,
+
+                    minimo:
+                        datos.minimo,
+
+                    maximo:
+                        datos.maximo,
+
+                    pendiente:
+                        datos.pendiente,
+
+                    tendencia:
+                        datos.tendencia
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA PERIODOS
+    ================================================================*/
+
+    tablaPeriodosEvolucion(
+        evolucion = null
+    ) {
+
+        const resultado =
+            evolucion ||
+            this.obtenerEvolucion();
+
+
+        const periodos =
+            resultado.periodos ||
+            [];
+
+
+        const tabla =
+            periodos.map(
+
+                periodo => ({
+
+                    periodo:
+                        periodo.numero,
+
+                    nombre:
+                        periodo.nombre,
+
+                    cantidad:
+                        periodo.cantidad,
+
+                    top10:
+                        periodo.resumen
+                            ?.promedioAciertosTop10 ??
+                        0,
+
+                    top20:
+                        periodo.resumen
+                            ?.promedioAciertosTop20 ??
+                        0,
+
+                    titulares:
+                        periodo.resumen
+                            ?.promedioAciertosTitulares ??
+                        0,
+
+                    suplentes:
+                        periodo.resumen
+                            ?.promedioAciertosSuplentes ??
+                        0,
+
+                    cobertura:
+                        periodo.resumen
+                            ?.promedioCobertura ??
+                        0
+
+                })
+
+            );
+
+
+        console.table(
+            tabla
+        );
+
+
+        return tabla;
+
+    }
+
+
+    /*================================================================
+        TABLA COMPARACIÓN PERIODOS
+    ================================================================*/
+
+    tablaComparacionPeriodos(
+        evolucion = null
+    ) {
+
+        const resultado =
+            evolucion ||
+            this.obtenerEvolucion();
+
+
+        const comparacion =
+            resultado
+                .comparacionPeriodos;
+
+
+        if (
+            !comparacion ||
+            !comparacion.disponible
+        ) {
+
+            console.log(
+                comparacion
+            );
+
+            return comparacion;
+
+        }
+
+
+        console.table(
+            comparacion.variaciones
+        );
+
+
+        console.log(
+            "Dirección:",
+            comparacion.direccion
+        );
+
+
+        return comparacion;
+
+    }
+
+
+    /*================================================================
+        TABLA CAMBIOS EVOLUCIÓN
+    ================================================================*/
+
+    tablaCambiosEvolucion(
+        evolucion = null
+    ) {
+
+        const resultado =
+            evolucion ||
+            this.obtenerEvolucion();
+
+
+        const cambios =
+            resultado.cambios ||
+            [];
+
+
+        console.table(
+            cambios
+        );
+
+
+        return cambios;
+
+    }
+
+
+    /*================================================================
+        TABLA SEÑALES EVOLUCIÓN
+    ================================================================*/
+
+    tablaSeñalesEvolucion(
+        evolucion = null
+    ) {
+
+        const resultado =
+            evolucion ||
+            this.obtenerEvolucion();
+
+
+        const señales =
+            resultado
+                .señalesOptimizacion ||
+            [];
+
+
+        console.table(
+            señales
+        );
+
+
+        return señales;
+
+    }
+
+
+    /*================================================================
+        TABLA MOTOR ESPECÍFICO EN EVOLUCIÓN
+    ================================================================*/
+
+    detalleMotorEvolucion(
+        claveMotor,
+        evolucion = null
+    ) {
+
+        const resultado =
+            evolucion ||
+            this.obtenerEvolucion();
+
+
+        const motor =
+            resultado
+                .motores
+                ?.[claveMotor];
+
+
+        if (!motor) {
+
+            console.warn(
+                "Motor no encontrado:",
+                claveMotor
+            );
+
+            return null;
+
+        }
+
+
+        console.log(
+            motor
+        );
+
+
+        console.table(
+            motor.historial
+        );
+
+
+        return motor;
+
+    }
+
+
+    /*================================================================
+        TABLA GENERAL DE NÚMERO
     ================================================================*/
 
     tablaNumero(
@@ -2027,13 +3166,19 @@ class EntornoPruebas {
                     "Frecuencia",
 
                 score:
-                    resultado.frecuencia.score,
+                    resultado
+                        .frecuencia
+                        .score,
 
                 confianza:
-                    resultado.frecuencia.confianza,
+                    resultado
+                        .frecuencia
+                        .confianza,
 
                 peso:
-                    resultado.frecuencia.peso
+                    resultado
+                        .frecuencia
+                        .peso
             },
 
             {
@@ -2041,13 +3186,19 @@ class EntornoPruebas {
                     "Atraso",
 
                 score:
-                    resultado.atraso.score,
+                    resultado
+                        .atraso
+                        .score,
 
                 confianza:
-                    resultado.atraso.confianza,
+                    resultado
+                        .atraso
+                        .confianza,
 
                 peso:
-                    resultado.atraso.peso
+                    resultado
+                        .atraso
+                        .peso
             },
 
             {
@@ -2055,13 +3206,19 @@ class EntornoPruebas {
                     "Tendencia",
 
                 score:
-                    resultado.tendencia.score,
+                    resultado
+                        .tendencia
+                        .score,
 
                 confianza:
-                    resultado.tendencia.confianza,
+                    resultado
+                        .tendencia
+                        .confianza,
 
                 peso:
-                    resultado.tendencia.peso
+                    resultado
+                        .tendencia
+                        .peso
             },
 
             {
@@ -2069,13 +3226,19 @@ class EntornoPruebas {
                     "Repeticion",
 
                 score:
-                    resultado.repeticion.score,
+                    resultado
+                        .repeticion
+                        .score,
 
                 confianza:
-                    resultado.repeticion.confianza,
+                    resultado
+                        .repeticion
+                        .confianza,
 
                 peso:
-                    resultado.repeticion.peso
+                    resultado
+                        .repeticion
+                        .peso
             },
 
             {
@@ -2083,13 +3246,19 @@ class EntornoPruebas {
                     "Historico",
 
                 score:
-                    resultado.historico.score,
+                    resultado
+                        .historico
+                        .score,
 
                 confianza:
-                    resultado.historico.confianza,
+                    resultado
+                        .historico
+                        .confianza,
 
                 peso:
-                    resultado.historico.peso
+                    resultado
+                        .historico
+                        .peso
             },
 
             {
@@ -2097,13 +3266,19 @@ class EntornoPruebas {
                     "Paridad",
 
                 score:
-                    resultado.paridad.score,
+                    resultado
+                        .paridad
+                        .score,
 
                 confianza:
-                    resultado.paridad.confianza,
+                    resultado
+                        .paridad
+                        .confianza,
 
                 peso:
-                    resultado.paridad.peso
+                    resultado
+                        .paridad
+                        .peso
             },
 
             {
@@ -2111,13 +3286,19 @@ class EntornoPruebas {
                     "Rangos",
 
                 score:
-                    resultado.rangos.score,
+                    resultado
+                        .rangos
+                        .score,
 
                 confianza:
-                    resultado.rangos.confianza,
+                    resultado
+                        .rangos
+                        .confianza,
 
                 peso:
-                    resultado.rangos.peso
+                    resultado
+                        .rangos
+                        .peso
             },
 
             {
@@ -2125,13 +3306,19 @@ class EntornoPruebas {
                     "Distribucion",
 
                 score:
-                    resultado.distribucion.score,
+                    resultado
+                        .distribucion
+                        .score,
 
                 confianza:
-                    resultado.distribucion.confianza,
+                    resultado
+                        .distribucion
+                        .confianza,
 
                 peso:
-                    resultado.distribucion.peso
+                    resultado
+                        .distribucion
+                        .peso
             },
 
             {
@@ -2139,13 +3326,19 @@ class EntornoPruebas {
                     "Asociaciones",
 
                 score:
-                    resultado.asociaciones.score,
+                    resultado
+                        .asociaciones
+                        .score,
 
                 confianza:
-                    resultado.asociaciones.confianza,
+                    resultado
+                        .asociaciones
+                        .confianza,
 
                 peso:
-                    resultado.asociaciones.peso
+                    resultado
+                        .asociaciones
+                        .peso
             },
 
             {
@@ -2153,13 +3346,19 @@ class EntornoPruebas {
                     "Ciclos",
 
                 score:
-                    resultado.ciclos.score,
+                    resultado
+                        .ciclos
+                        .score,
 
                 confianza:
-                    resultado.ciclos.confianza,
+                    resultado
+                        .ciclos
+                        .confianza,
 
                 peso:
-                    resultado.ciclos.peso
+                    resultado
+                        .ciclos
+                        .peso
             },
 
             {
@@ -2167,13 +3366,19 @@ class EntornoPruebas {
                     "MANAGER",
 
                 score:
-                    resultado.manager.score,
+                    resultado
+                        .manager
+                        .score,
 
                 confianza:
-                    resultado.manager.confianza,
+                    resultado
+                        .manager
+                        .confianza,
 
                 peso:
-                    resultado.manager.pesoTotal
+                    resultado
+                        .manager
+                        .pesoTotal
             }
 
         ];
@@ -2211,7 +3416,8 @@ window.EntornoPruebas =
     INICIALIZACIÓN AUTOMÁTICA
 ====================================================================*/
 
-await entornoPruebas.inicializar();
+await entornoPruebas
+    .inicializar();
 
 
 /*====================================================================

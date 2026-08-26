@@ -32,18 +32,26 @@ export const CONFIG = {
     // Colecciones Firestore
     COLLECTIONS: {
 
-        SEMANAS: "semanas",
+            SEMANAS:
+        "semanas",
 
-        ESTADISTICAS: "estadisticas",
+    ESTADISTICAS:
+        "estadisticas",
 
-        RANKING: "ranking",
+    RANKING:
+        "ranking",
 
-        CONFIGURACION: "configuracion",
+    CONFIGURACION:
+        "configuracion",
 
-        AUDITORIA: "auditoria",
+    AUDITORIA:
+        "auditoria",
 
-        PREDICCIONES: "predicciones"
+    PREDICCIONES:
+        "predicciones",
 
+    EVALUACIONES:
+        "evaluaciones"
     },
 
     // Formato de IDs
