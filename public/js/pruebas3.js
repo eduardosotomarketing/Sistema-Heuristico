@@ -5,45 +5,74 @@
  * js/pruebas.js
  *
  * Versión:
- * 3.5.4
+ * 3.5.1
  *
  * Propósito:
  *
  * Entorno centralizado de pruebas y orquestación del
  * Sistema Heurístico Evolutivo.
  *
+ *
+ * NUEVO v3.5.1
+ *
+ *   - Integración de FlujoAutomaticoService v1.0.0.
+ *
+ *   - Nuevo método:
+ *
+ *       procesarSemana()
+ *
+ *   - El ciclo puede ejecutar:
+ *
+ *       Predicción
+ *          ↓
+ *       Evaluación
+ *          ↓
+ *       Evolución
+ *          ↓
+ *       Optimización
+ *          ↓
+ *       Aplicación de pesos si corresponde
+ *          ↓
+ *       Sincronización MotorManager
+ *          ↓
+ *       Nuevo Ranking
+ *          ↓
+ *       Siguiente Predicción
+ *
+ *   - Modos:
+ *
+ *       CONTROLADO
+ *       COMPLETO
+ *
+ *   - Protección contra reprocesamiento.
+ *
+ *   - Actualización automática de caches Firestore.
+ *
+ *   - Sincronización automática:
+ *
+ *       configuracion_pesos/activa
+ *               ↓
+ *       ConfiguracionPesosService
+ *               ↓
+ *       MotorManager
+ *
+ *   - Generación opcional de la siguiente predicción.
+ *
+ *
+ * IMPORTANTE
+ *
+ * Versión:
+ * 3.5.3
+ *
  * NUEVO v3.5.3
  *
- *   - Integración de PrediccionService.guardarSeguro().
- *   - Protección automática contra predicciones pendientes duplicadas.
- *   - Reutilización de predicción pendiente existente por semana.
- *   - Opción forzarNueva para regeneraciones explícitas.
- *   - Integración de SemanaService al flujo automático.
- *   - Recuperación de ciclos parciales mediante estado YA_PROCESADA.
- *   - Recarga de historial, estadísticas y motores después de guardar
- *     una semana real.
- *   - Sincronización automática de pesos con MotorManager.
- *   - Generación segura de la siguiente predicción.
- *
- * Flujo:
- *
- *   Predicción N
- *       ↓
- *   Evaluación
- *       ↓
- *   Evolución
- *       ↓
- *   Optimización
- *       ↓
- *   Guardar semana real
- *       ↓
- *   Recargar base heurística
- *       ↓
- *   Sincronizar pesos
- *       ↓
- *   Generar/Reutilizar predicción N+1
+ * - Integración de PrediccionService.guardarSeguro().
+ * - Protección automática contra predicciones pendientes duplicadas.
+ * - Reutilización de predicción existente por semana.
+ * - Opción forzarNueva para pruebas o regeneraciones explícitas.
  *
  **********************************************************************/
+
 
 /*====================================================================
     IMPORTS - SERVICIOS
@@ -73,7 +102,7 @@ import ConfiguracionPesosService
 import FlujoAutomaticoService
     from "./services/FlujoAutomaticoService.js";
 
-import SemanaService
+    import SemanaService
     from "./services/SemanaService.js";
 
 
@@ -144,7 +173,7 @@ class EntornoPruebas {
     constructor() {
 
         this.version =
-            "3.5.4";
+            "3.5.2";
 
 
         this.inicializado =
@@ -179,8 +208,8 @@ class EntornoPruebas {
         this.flujoAutomaticoService =
             null;
 
-        this.semanaService =
-            null;
+            this.semanaService =
+    null;
 
 
         /*============================================================
@@ -489,12 +518,12 @@ class EntornoPruebas {
             );
 
             this.semanaService =
-                new SemanaService();
+    new SemanaService();
 
 
-            console.log(
-                "SemanaService inicializado."
-            );
+console.log(
+    "SemanaService inicializado."
+);
 
 
             /*========================================================
@@ -958,6 +987,539 @@ class EntornoPruebas {
 
         return this.flujoAutomaticoService
             .obtenerEstado();
+
+    }
+
+
+    /*================================================================
+        PROCESAR SEMANA
+        NUEVO v3.4.0
+    ================================================================*/
+
+    async procesarSemana({
+
+        prediccion = null,
+
+        prediccionId = null,
+
+        numerosReales = [],
+
+        semana = null,
+
+        fecha = null,
+
+        modo = null,
+
+        reprocesar = false,
+
+        opcionesEvolucion = {},
+
+        opcionesOptimizacion = {},
+
+        generarSiguientePrediccion = true,
+
+        guardarSiguientePrediccion = true,
+
+        siguienteSemana = null,
+
+        siguienteFecha = null
+
+    } = {}) {
+
+        this.verificarInicializacion();
+
+
+        console.log(
+            "========================================"
+        );
+
+        console.log(
+            "PROCESAR SEMANA - FLUJO v3.4.0"
+        );
+
+        console.log(
+            "========================================"
+        );
+
+
+        /*------------------------------------------------------------
+            1. MODO
+        ------------------------------------------------------------*/
+
+        if (
+            modo
+        ) {
+
+            const modoNormalizado =
+                String(
+                    modo
+                ).toUpperCase();
+
+
+            if (
+                modoNormalizado !==
+                this.modoFlujoAutomatico
+            ) {
+
+                this.configurarModoFlujo(
+                    modoNormalizado
+                );
+
+            }
+
+        }
+
+
+        /*------------------------------------------------------------
+            2. RESOLVER PREDICCIÓN
+        ------------------------------------------------------------*/
+
+        let prediccionObjetivo =
+            prediccion;
+
+
+        if (
+            !prediccionObjetivo &&
+            prediccionId
+        ) {
+
+            prediccionObjetivo =
+                await this
+                    .cargarPrediccion(
+
+                        prediccionId,
+
+                        true
+
+                    );
+
+        }
+
+
+        if (
+            !prediccionObjetivo
+        ) {
+
+            prediccionObjetivo =
+                await this
+                    .cargarUltimaPrediccion(
+                        true
+                    );
+
+        }
+
+
+        if (
+            !prediccionObjetivo
+        ) {
+
+            throw new Error(
+                "No existe una predicción disponible para procesar."
+            );
+
+        }
+
+
+        /*------------------------------------------------------------
+            3. DATOS SEMANA
+        ------------------------------------------------------------*/
+
+        const datosSemana = {
+
+            semana:
+                semana ??
+                prediccionObjetivo
+                    .semanaObjetivo ??
+                null,
+
+            fecha:
+                fecha ??
+                prediccionObjetivo
+                    .fechaObjetivo ??
+                null
+
+        };
+
+
+        /*------------------------------------------------------------
+            4. EJECUTAR FLUJO
+        ------------------------------------------------------------*/
+
+        const resultadoFlujo =
+            await this
+                .flujoAutomaticoService
+                .procesarResultado({
+
+                    prediccion:
+                        prediccionObjetivo,
+
+                    numerosReales,
+
+                    datosSemana,
+
+                    opcionesEvolucion,
+
+                    opcionesOptimizacion,
+
+                    reprocesar
+
+                });
+
+
+        this.ultimoFlujoAutomatico =
+            resultadoFlujo;
+
+
+        /*------------------------------------------------------------
+            5. ACTUALIZAR CACHE
+        ------------------------------------------------------------*/
+
+        await this
+            .actualizarCachesDespuesFlujo();
+
+
+        /*------------------------------------------------------------
+            6. RECARGAR PESOS
+        ------------------------------------------------------------*/
+
+        /*
+         * Lo hacemos incluso si no fueron aplicados.
+         *
+         * Esto garantiza que pruebas.js y
+         * MotorManager siempre queden alineados.
+         */
+
+        await this
+            .recargarPesosActivos();
+
+
+        const sincronizacion =
+            this.verificarSincronizacionPesos();
+
+
+        if (
+            !sincronizacion.sincronizado
+        ) {
+
+            throw new Error(
+                "MotorManager no quedó sincronizado después del flujo."
+            );
+
+        }
+
+
+        /*------------------------------------------------------------
+            7. ACTUALIZAR REFERENCIAS
+        ------------------------------------------------------------*/
+
+        if (
+            resultadoFlujo.estado !==
+                "YA_PROCESADA"
+        ) {
+
+            if (
+                resultadoFlujo.evaluacion
+                    ?.id
+            ) {
+
+                this.ultimaEvaluacionFirestore =
+                    this.evaluacionesPersistidas
+                        .find(
+                            item =>
+                                item.id ===
+                                resultadoFlujo
+                                    .evaluacion
+                                    .id
+                        ) ??
+                    null;
+
+            }
+
+
+            if (
+                resultadoFlujo.evolucion
+                    ?.id
+            ) {
+
+                this.ultimaEvolucionFirestore =
+                    await this
+                        .cargarEvolucion(
+
+                            resultadoFlujo
+                                .evolucion
+                                .id,
+
+                            true
+
+                        );
+
+            }
+
+
+            if (
+                resultadoFlujo.optimizacion
+                    ?.id
+            ) {
+
+                this.ultimaOptimizacionFirestore =
+                    await this
+                        .cargarOptimizacion(
+
+                            resultadoFlujo
+                                .optimizacion
+                                .id,
+
+                            true
+
+                        );
+
+            }
+
+        }
+
+
+        /*------------------------------------------------------------
+            8. SIGUIENTE PREDICCIÓN
+        ------------------------------------------------------------*/
+
+        let prediccionSiguiente =
+            null;
+
+
+        if (
+            generarSiguientePrediccion &&
+            resultadoFlujo.estado !==
+                "YA_PROCESADA"
+        ) {
+
+            const siguiente =
+                this.resolverSiguienteSemana({
+
+                    semana:
+                        datosSemana.semana,
+
+                    fecha:
+                        datosSemana.fecha,
+
+                    siguienteSemana,
+
+                    siguienteFecha
+
+                });
+
+
+            /*
+             * Los pesos pueden haber cambiado.
+             *
+             * recargarPesosActivos() invalidó el
+             * ranking anterior, por lo que ranking()
+             * generará uno nuevo.
+             */
+
+          /*------------------------------------------------------------
+    GENERAR / REUTILIZAR SIGUIENTE PREDICCIÓN
+    v3.5.3
+------------------------------------------------------------*/
+
+if (
+    guardarSiguientePrediccion
+) {
+
+    const resultadoPrediccion =
+        await this
+            .prepararYGuardarPrediccionSegura(
+
+                {
+
+                    semanaObjetivo:
+                        siguiente.semana,
+
+                    fechaObjetivo:
+                        siguiente.fecha
+
+                },
+
+                {
+
+                    forzarNueva:
+                        false,
+
+                    incluirRankingExistente:
+                        true
+
+                }
+
+            );
+
+
+    prediccionSiguiente =
+        resultadoPrediccion
+            .prediccion;
+
+
+    console.log(
+        "Acción siguiente predicción:",
+        resultadoPrediccion.accion
+    );
+
+}
+
+else {
+
+    /*
+     * Si no queremos persistir,
+     * solo generamos en memoria.
+     */
+
+    prediccionSiguiente =
+        this.prepararPrediccion({
+
+            semanaObjetivo:
+                siguiente.semana,
+
+            fechaObjetivo:
+                siguiente.fecha
+
+        });
+
+}
+
+            console.log(
+                "Siguiente predicción preparada:",
+                prediccionSiguiente.id
+            );
+
+        }
+
+
+        /*------------------------------------------------------------
+            9. RESULTADO INTEGRADO
+        ------------------------------------------------------------*/
+
+        const resultado = {
+
+            tipo:
+                "PROCESAR_SEMANA",
+
+            versionPruebas:
+                this.version,
+
+            modo:
+                this.modoFlujoAutomatico,
+
+            estado:
+                resultadoFlujo.estado,
+
+            semanaProcesada: {
+
+                numero:
+                    datosSemana.semana,
+
+                fecha:
+                    datosSemana.fecha
+
+            },
+
+            flujo:
+                resultadoFlujo,
+
+            pesos: {
+
+                suma:
+                    this.sumaPesosBase(),
+
+                sincronizados:
+                    sincronizacion.sincronizado,
+
+                configuracion:
+                    this.obtenerPesosActivos()
+
+            },
+
+            siguientePrediccion:
+
+                prediccionSiguiente
+
+                    ? {
+
+                        id:
+                            prediccionSiguiente.id,
+
+                        semanaObjetivo:
+                            prediccionSiguiente
+                                .semanaObjetivo,
+
+                        fechaObjetivo:
+                            prediccionSiguiente
+                                .fechaObjetivo,
+
+                        top10:
+                            prediccionSiguiente
+                                .top10
+                                ?.length ??
+                            0,
+
+                        top20:
+                            prediccionSiguiente
+                                .top20
+                                ?.length ??
+                            0,
+
+                        ranking:
+                            prediccionSiguiente
+                                .rankingCompleto
+                                ?.length ??
+                            prediccionSiguiente
+                                .totalRanking ??
+                            0
+
+                    }
+
+                    : null,
+
+            finalizadoEn:
+                new Date()
+                    .toISOString()
+
+        };
+
+
+        this.ultimoFlujoAutomatico =
+            resultado;
+
+
+        console.log(
+            "========================================"
+        );
+
+        console.log(
+            "PROCESAR SEMANA FINALIZADO"
+        );
+
+        console.log(
+            "Estado:",
+            resultado.estado
+        );
+
+        console.log(
+            "Pesos:",
+            resultado.pesos.suma
+        );
+
+        console.log(
+            "Siguiente predicción:",
+            resultado
+                .siguientePrediccion
+                ?.id ??
+            "NO GENERADA"
+        );
+
+        console.log(
+            "========================================"
+        );
+
+
+        return resultado;
 
     }
 
@@ -2653,104 +3215,6 @@ async prepararYGuardarPrediccionSegura(
 
 
     /*================================================================
-        PREDICCIONES POR SEMANA
-        v3.5.3
-    ================================================================*/
-
-    async prediccionesSemana(
-
-        semana,
-
-        incluirRanking = false
-
-    ) {
-
-        this.verificarInicializacion();
-
-
-        return await this.prediccionService
-            .obtenerPorSemana(
-
-                semana,
-
-                {
-                    incluirRanking
-                }
-
-            );
-
-    }
-
-
-    /*================================================================
-        TABLA PREDICCIONES POR SEMANA
-        v3.5.3
-    ================================================================*/
-
-    async tablaPrediccionesSemana(
-        semana
-    ) {
-
-        const lista =
-            await this
-                .prediccionesSemana(
-                    semana,
-                    false
-                );
-
-
-        const tabla =
-            lista.map(
-
-                item => ({
-
-                    id:
-                        item.id,
-
-                    semana:
-                        item.semanaObjetivo,
-
-                    fechaObjetivo:
-                        item.fechaObjetivo,
-
-                    fechaPrediccion:
-                        item.fechaPrediccion,
-
-                    evaluada:
-                        item.evaluacion
-                            ?.realizada ===
-                            true,
-
-                    pendiente:
-                        item.evaluacion
-                            ?.realizada !==
-                            true,
-
-                    evaluacionId:
-                        item.evaluacion
-                            ?.evaluacionId ??
-                        null,
-
-                    ranking:
-                        item.totalRanking ??
-                        0
-
-                })
-
-            );
-
-
-        console.table(
-            tabla
-        );
-
-
-        return tabla;
-
-    }
-
-
-    /*================================================================
         EVALUACIÓN
     ================================================================*/
 
@@ -4339,17 +4803,9 @@ semanaService: {
                     null,
 
                 estado:
-
                     resultado
                         .siguientePrediccion
-
-                        ? (
-                            resultado
-                                .siguientePrediccion
-                                .accion ||
-                            "GENERADA"
-                        )
-
+                        ? "GENERADA"
                         : "NO_GENERADA"
 
             }
@@ -4414,7 +4870,7 @@ semanaService: {
 
 /*================================================================
     GUARDAR SEMANA REAL
-    v3.5.3
+    v3.5.1
 ================================================================*/
 
 async guardarSemanaReal({
@@ -4763,7 +5219,7 @@ listasNumerosIguales(
 
 /*================================================================
     RECARGAR BASE HEURÍSTICA
-    v3.5.4
+    v3.5.1
 ================================================================*/
 
 async recargarBaseHeuristica() {
@@ -4788,20 +5244,9 @@ async recargarBaseHeuristica() {
         1. HISTORIAL
     ------------------------------------------------------------*/
 
-    /*
-     * v3.5.4
-     *
-     * Después de guardar una semana real usamos SemanaService como
-     * fuente directa del historial. Esto evita depender de una capa
-     * intermedia que pueda conservar un estado anterior durante el
-     * mismo ciclo.
-     */
-
     this.datosHistorial =
-        await this.semanaService
-            .obtenerTodas(
-                "asc"
-            );
+        await this.historialService
+            .obtenerHistorial();
 
 
     if (
@@ -4816,19 +5261,8 @@ async recargarBaseHeuristica() {
     }
 
 
-    /*
-     * Orden defensivo adicional por número de semana.
-     */
-
-    this.datosHistorial.sort(
-        (a, b) =>
-            Number(a?.semana ?? 0) -
-            Number(b?.semana ?? 0)
-    );
-
-
     console.log(
-        "Historial actualizado desde SemanaService:",
+        "Historial actualizado:",
         this.datosHistorial.length,
         "semana(s)"
     );
@@ -5057,7 +5491,7 @@ async recargarBaseHeuristica() {
 
 /*================================================================
     PROCESAR SEMANA
-    v3.5.3
+    v3.5.1
 ================================================================*/
 
 async procesarSemana({
@@ -5100,7 +5534,7 @@ async procesarSemana({
     );
 
     console.log(
-        "PROCESAR SEMANA - FLUJO v3.5.4"
+        "PROCESAR SEMANA - FLUJO v3.5.0"
     );
 
     console.log(
@@ -5613,10 +6047,6 @@ if (
         null;
 
 
-    let accionPrediccionSiguiente =
-        null;
-
-
     if (
         generarSiguientePrediccion
     ) {
@@ -5638,80 +6068,34 @@ if (
 
 
         /*
-         * La siguiente predicción debe usar:
+         * Esta predicción ya usa:
          *
          * - historial actualizado;
          * - estadísticas actualizadas;
          * - pesos activos actualizados.
-         *
-         * Si ya existe una predicción pendiente para esa semana,
-         * se reutiliza y no se genera un duplicado.
          */
+
+        prediccionSiguiente =
+            this.prepararPrediccion({
+
+                semanaObjetivo:
+                    siguiente.semana,
+
+                fechaObjetivo:
+                    siguiente.fecha
+
+            });
+
 
         if (
             guardarSiguientePrediccion
         ) {
 
-            const resultadoPrediccion =
+            prediccionSiguiente =
                 await this
-                    .prepararYGuardarPrediccionSegura(
-
-                        {
-
-                            semanaObjetivo:
-                                siguiente.semana,
-
-                            fechaObjetivo:
-                                siguiente.fecha
-
-                        },
-
-                        {
-
-                            forzarNueva:
-                                false,
-
-                            incluirRankingExistente:
-                                true
-
-                        }
-
+                    .guardarPrediccion(
+                        prediccionSiguiente
                     );
-
-
-            prediccionSiguiente =
-                resultadoPrediccion
-                    .prediccion;
-
-
-            accionPrediccionSiguiente =
-                resultadoPrediccion
-                    .accion;
-
-
-            console.log(
-                "Acción siguiente predicción:",
-                accionPrediccionSiguiente
-            );
-
-        }
-
-        else {
-
-            prediccionSiguiente =
-                this.prepararPrediccion({
-
-                    semanaObjetivo:
-                        siguiente.semana,
-
-                    fechaObjetivo:
-                        siguiente.fecha
-
-                });
-
-
-            accionPrediccionSiguiente =
-                "GENERADA_EN_MEMORIA";
 
         }
 
@@ -5842,9 +6226,6 @@ if (
                     id:
                         prediccionSiguiente.id,
 
-                    accion:
-                        accionPrediccionSiguiente,
-
                     semanaObjetivo:
                         prediccionSiguiente
                             .semanaObjetivo,
@@ -5932,7 +6313,7 @@ if (
 }
 /*================================================================
     TABLA SEMANAS
-    v3.5.3
+    v3.5.1
 ================================================================*/
 
 async tablaSemanas() {

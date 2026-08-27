@@ -4,60 +4,90 @@
  * Archivo:
  * js/services/PrediccionService.js
  *
+ * Versión:
+ * 2.1.1
+ *
  * Propósito:
  *
- * Persistir y recuperar predicciones generadas por MotorRanking.
+ * Persistir y recuperar predicciones del sistema.
  *
- * Firestore:
  *
- * colección:
- * predicciones
+ * ARQUITECTURA
  *
- * Responsabilidades:
+ * predicciones/{prediccionId}
  *
- *   - Guardar predicción.
- *   - Obtener predicción por ID.
- *   - Obtener todas.
- *   - Buscar por semana objetivo.
- *   - Obtener última predicción.
- *   - Obtener predicciones pendientes de evaluación.
- *   - Marcar predicción como evaluada.
- *   - Actualizar.
- *   - Eliminar.
- *   - Comprobar existencia.
+ *      cabecera de la predicción
+ *
+ * predicciones/{prediccionId}/ranking/{numero}
+ *
+ *      ranking completo separado en documentos individuales
+ *
+ *
+ * MOTIVO
+ *
+ * El ranking completo con información de todos los motores
+ * puede superar el límite máximo de tamaño de un documento
+ * Firestore.
+ *
+ * Por eso:
+ *
+ *   - Top 10, Top 20, titulares y suplentes permanecen
+ *     en la cabecera.
+ *
+ *   - rankingCompleto se almacena en una subcolección.
+ *
+ *
+ * NUEVO v2.1.1
+ *
+ *   - Limpieza recursiva de valores undefined antes de persistir.
+ *   - Protección de cabecera Firestore.
+ *   - Protección de documentos de ranking.
+ *
+ *
+ * HEREDADO v2.1.0
+ *
+ *   - obtenerPorSemana()
+ *   - obtenerPendientePorSemana()
+ *   - existePendientePorSemana()
+ *   - guardarSeguro()
+ *
+ *   - Protección contra predicciones pendientes duplicadas.
  *
  **********************************************************************/
 
 
+/*====================================================================
+    FIREBASE
+====================================================================*/
+
 import {
 
     collection,
+    deleteDoc,
     doc,
-    setDoc,
     getDoc,
     getDocs,
-    updateDoc,
-    deleteDoc,
-    query,
-    where,
+    limit,
     orderBy,
-    limit
+    query,
+    setDoc,
+    updateDoc,
+    where,
+    writeBatch
 
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 
 import {
+
     db
+
 } from "../firebase.js";
 
 
 /*====================================================================
-    NOMBRE DE COLECCIÓN
+    CLASE
 ====================================================================*/
-
-const COLECCION =
-    "predicciones";
-
 
 export default class PrediccionService {
 
@@ -68,14 +98,139 @@ export default class PrediccionService {
 
     constructor() {
 
+        this.nombre =
+            "PrediccionService";
+
+
+        this.version =
+            "2.1.1";
+
+
         this.coleccion =
-            COLECCION;
+            "predicciones";
+
+
+        this.subcoleccionRanking =
+            "ranking";
 
     }
 
 
     /*================================================================
-        GUARDAR PREDICCIÓN
+        LIMPIAR UNDEFINED
+        NUEVO v2.1.1
+    ================================================================*/
+
+    limpiarUndefined(
+        valor
+    ) {
+
+        /*
+         * Firestore no acepta undefined.
+         *
+         * En arrays lo convertimos a null para
+         * conservar posiciones.
+         */
+
+        if (
+            valor === undefined
+        ) {
+
+            return null;
+
+        }
+
+
+        /*------------------------------------------------------------
+            ARRAYS
+        ------------------------------------------------------------*/
+
+        if (
+            Array.isArray(
+                valor
+            )
+        ) {
+
+            return valor.map(
+
+                item =>
+                    this.limpiarUndefined(
+                        item
+                    )
+
+            );
+
+        }
+
+
+        /*------------------------------------------------------------
+            OBJETOS PLANOS
+        ------------------------------------------------------------*/
+
+        if (
+            valor !== null &&
+            typeof valor ===
+                "object" &&
+            Object.getPrototypeOf(
+                valor
+            ) === Object.prototype
+        ) {
+
+            const limpio =
+                {};
+
+
+            for (
+                const [
+                    clave,
+                    contenido
+                ]
+                of Object.entries(
+                    valor
+                )
+            ) {
+
+                /*
+                 * En objetos eliminamos completamente
+                 * propiedades undefined.
+                 */
+
+                if (
+                    contenido === undefined
+                ) {
+
+                    continue;
+
+                }
+
+
+                limpio[
+                    clave
+                ] =
+                    this.limpiarUndefined(
+                        contenido
+                    );
+
+            }
+
+
+            return limpio;
+
+        }
+
+
+        /*
+         * Strings, números, booleanos,
+         * fechas serializadas, null, etc.
+         */
+
+        return valor;
+
+    }
+
+
+    /*================================================================
+        GUARDAR
     ================================================================*/
 
     async guardar(
@@ -84,32 +239,15 @@ export default class PrediccionService {
 
         try {
 
-            if (
-                !prediccion ||
-                typeof prediccion !==
-                    "object"
-            ) {
-
-                throw new Error(
-                    "La predicción recibida no es válida."
-                );
-
-            }
-
-
-            const datos =
-                this.prepararPrediccion(
-                    prediccion
-                );
+            this.validarPrediccion(
+                prediccion
+            );
 
 
             const id =
-                datos.id ||
-                this.generarId();
-
-
-            datos.id =
-                id;
+                String(
+                    prediccion.id
+                );
 
 
             const referencia =
@@ -124,22 +262,159 @@ export default class PrediccionService {
                 );
 
 
+            /*
+             * rankingCompleto NO se almacena
+             * en la cabecera.
+             */
+
+            const {
+
+                rankingCompleto = [],
+
+                ...cabeceraOriginal
+
+            } = prediccion;
+
+
+            const ranking =
+                Array.isArray(
+                    rankingCompleto
+                )
+
+                    ? rankingCompleto
+
+                    : [];
+
+
+            const ahora =
+                new Date()
+                    .toISOString();
+
+
+            const cabecera = {
+
+                ...cabeceraOriginal,
+
+
+                id,
+
+
+                totalRanking:
+                    ranking.length,
+
+
+                rankingSeparado:
+                    true,
+
+
+                persistencia: {
+
+                    ...(
+                        cabeceraOriginal
+                            .persistencia ||
+                        {}
+                    ),
+
+                    versionServicio:
+                        this.version,
+
+                    actualizadoEn:
+                        ahora
+
+                }
+
+            };
+
+
+            /*
+             * creadoEn se establece solamente
+             * si todavía no existe.
+             */
+
+            if (
+                !cabecera
+                    .persistencia
+                    .creadoEn
+            ) {
+
+                cabecera
+                    .persistencia
+                    .creadoEn =
+                        ahora;
+
+            }
+
+
+            /*--------------------------------------------------------
+                LIMPIAR CABECERA
+            --------------------------------------------------------*/
+
+            const cabeceraFirestore =
+                this.limpiarUndefined(
+                    cabecera
+                );
+
+
+            /*--------------------------------------------------------
+                CABECERA FIRESTORE
+            --------------------------------------------------------*/
+
             await setDoc(
 
                 referencia,
 
-                datos
+                cabeceraFirestore,
+
+                {
+                    merge:
+                        true
+                }
 
             );
+
+
+            /*--------------------------------------------------------
+                RANKING
+            --------------------------------------------------------*/
+
+            await this
+                .guardarRanking(
+
+                    id,
+
+                    ranking
+
+                );
 
 
             console.log(
-                "Predicción guardada:",
-                id
+
+                `Predicción guardada: ${id} ` +
+                `(${ranking.length} elementos de ranking)`
+
             );
 
 
-            return datos;
+            /*--------------------------------------------------------
+                RETORNO COMPLETO
+            --------------------------------------------------------*/
+
+            return {
+
+                ...cabeceraFirestore,
+
+                rankingCompleto:
+
+                    ranking.map(
+
+                        item =>
+                            this.limpiarUndefined(
+                                item
+                            )
+
+                    )
+
+            };
 
         }
 
@@ -159,127 +434,382 @@ export default class PrediccionService {
 
 
     /*================================================================
-        PREPARAR PREDICCIÓN
+        GUARDAR SEGURO
     ================================================================*/
 
-    prepararPrediccion(
-        prediccion
+    async guardarSeguro(
+
+        prediccion,
+
+        {
+
+            forzarNueva = false,
+
+            incluirRankingExistente = true
+
+        } = {}
+
     ) {
 
-        const datos =
-            this.convertirObjetoPlano(
+        this.validarPrediccion(
+            prediccion
+        );
+
+
+        const semanaObjetivo =
+            Number(
+                prediccion
+                    .semanaObjetivo
+            );
+
+
+        /*------------------------------------------------------------
+            CREACIÓN FORZADA
+        ------------------------------------------------------------*/
+
+        if (
+            forzarNueva ===
+                true
+        ) {
+
+            const guardada =
+                await this.guardar(
+                    prediccion
+                );
+
+
+            return {
+
+                accion:
+                    "CREADA_FORZADA",
+
+                creada:
+                    true,
+
+                reutilizada:
+                    false,
+
+                prediccion:
+                    guardada
+
+            };
+
+        }
+
+
+        /*------------------------------------------------------------
+            BUSCAR PENDIENTE EXISTENTE
+        ------------------------------------------------------------*/
+
+        const existente =
+            await this
+                .obtenerPendientePorSemana(
+
+                    semanaObjetivo,
+
+                    {
+
+                        incluirRanking:
+                            incluirRankingExistente
+
+                    }
+
+                );
+
+
+        if (
+            existente
+        ) {
+
+            console.warn(
+
+                `Ya existe una predicción pendiente ` +
+                `para la semana ${semanaObjetivo}: ` +
+                `${existente.id}`
+
+            );
+
+
+            return {
+
+                accion:
+                    "REUTILIZADA",
+
+                creada:
+                    false,
+
+                reutilizada:
+                    true,
+
+                prediccion:
+                    existente
+
+            };
+
+        }
+
+
+        /*------------------------------------------------------------
+            CREAR NUEVA
+        ------------------------------------------------------------*/
+
+        const guardada =
+            await this.guardar(
                 prediccion
             );
 
 
-        const ahora =
-            new Date()
-                .toISOString();
+        return {
 
+            accion:
+                "CREADA",
 
-        /*
-         * Si MotorRanking ya creó fechaPrediccion
-         * la conservamos.
-         */
+            creada:
+                true,
 
-        if (
-            !datos.fechaPrediccion
-        ) {
+            reutilizada:
+                false,
 
-            datos.fechaPrediccion =
-                ahora;
+            prediccion:
+                guardada
 
-        }
-
-
-        /*
-         * Auditoría.
-         */
-
-        if (
-            !datos.creado
-        ) {
-
-            datos.creado =
-                ahora;
-
-        }
-
-
-        datos.modificado =
-            ahora;
-
-
-        /*
-         * Estado de evaluación.
-         *
-         * La predicción recién creada todavía
-         * no ha sido contrastada con resultado real.
-         */
-
-        if (
-            !datos.evaluacion ||
-            typeof datos.evaluacion !==
-                "object"
-        ) {
-
-            datos.evaluacion = {
-
-                realizada:
-                    false,
-
-                evaluacionId:
-                    null,
-
-                fechaEvaluacion:
-                    null
-
-            };
-
-        }
-
-        else {
-
-            datos.evaluacion = {
-
-                realizada:
-
-                    datos.evaluacion
-                        .realizada === true,
-
-                evaluacionId:
-
-                    datos.evaluacion
-                        .evaluacionId ??
-                    null,
-
-                fechaEvaluacion:
-
-                    datos.evaluacion
-                        .fechaEvaluacion ??
-                    null
-
-            };
-
-        }
-
-
-        return datos;
+        };
 
     }
 
 
     /*================================================================
-        OBTENER POR ID
+        GUARDAR RANKING
+    ================================================================*/
+
+    async guardarRanking(
+
+        prediccionId,
+
+        ranking
+
+    ) {
+
+        if (
+            !Array.isArray(
+                ranking
+            )
+        ) {
+
+            return 0;
+
+        }
+
+
+        /*
+         * Eliminamos cualquier ranking anterior
+         * asociado al mismo ID.
+         */
+
+        await this
+            .eliminarRanking(
+                prediccionId
+            );
+
+
+        if (
+            ranking.length ===
+                0
+        ) {
+
+            return 0;
+
+        }
+
+
+        const batch =
+            writeBatch(
+                db
+            );
+
+
+        ranking.forEach(
+
+            (
+                item,
+                indice
+            ) => {
+
+                const numero =
+                    Number(
+                        item.numero
+                    );
+
+
+                const idDocumento =
+
+                    Number.isInteger(
+                        numero
+                    )
+
+                        ? String(
+                            numero
+                        )
+                            .padStart(
+                                2,
+                                "0"
+                            )
+
+                        : String(
+                            indice +
+                            1
+                        )
+                            .padStart(
+                                3,
+                                "0"
+                            );
+
+
+                const referencia =
+                    doc(
+
+                        db,
+
+                        this.coleccion,
+
+                        prediccionId,
+
+                        this.subcoleccionRanking,
+
+                        idDocumento
+
+                    );
+
+
+                /*
+                 * Limpiamos cualquier undefined
+                 * proveniente de los motores.
+                 */
+
+                const itemFirestore =
+                    this.limpiarUndefined({
+
+                        ...item,
+
+                        prediccionId,
+
+                        orden:
+
+                            Number(
+                                item.orden
+                            ) ||
+                            indice +
+                            1
+
+                    });
+
+
+                batch.set(
+
+                    referencia,
+
+                    itemFirestore
+
+                );
+
+            }
+
+        );
+
+
+        await batch.commit();
+
+
+        return ranking.length;
+
+    }
+
+
+    /*================================================================
+        ELIMINAR RANKING
+    ================================================================*/
+
+    async eliminarRanking(
+        prediccionId
+    ) {
+
+        const referencia =
+            collection(
+
+                db,
+
+                this.coleccion,
+
+                prediccionId,
+
+                this.subcoleccionRanking
+
+            );
+
+
+        const snapshot =
+            await getDocs(
+                referencia
+            );
+
+
+        if (
+            snapshot.empty
+        ) {
+
+            return 0;
+
+        }
+
+
+        const batch =
+            writeBatch(
+                db
+            );
+
+
+        snapshot.docs.forEach(
+
+            documento => {
+
+                batch.delete(
+                    documento.ref
+                );
+
+            }
+
+        );
+
+
+        await batch.commit();
+
+
+        return snapshot.size;
+
+    }
+
+
+    /*================================================================
+        OBTENER
     ================================================================*/
 
     async obtener(
-        id
+
+        id,
+
+        {
+
+            incluirRanking = true
+
+        } = {}
+
     ) {
 
         try {
 
-            if (!id) {
+            if (
+                !id
+            ) {
 
                 return null;
 
@@ -293,7 +823,9 @@ export default class PrediccionService {
 
                     this.coleccion,
 
-                    String(id)
+                    String(
+                        id
+                    )
 
                 );
 
@@ -313,12 +845,45 @@ export default class PrediccionService {
             }
 
 
-            return {
+            const cabecera = {
 
                 id:
                     snapshot.id,
 
                 ...snapshot.data()
+
+            };
+
+
+            if (
+                incluirRanking !==
+                    true
+            ) {
+
+                return {
+
+                    ...cabecera,
+
+                    rankingCompleto:
+                        []
+
+                };
+
+            }
+
+
+            const rankingCompleto =
+                await this
+                    .obtenerRanking(
+                        snapshot.id
+                    );
+
+
+            return {
+
+                ...cabecera,
+
+                rankingCompleto
 
             };
 
@@ -340,11 +905,117 @@ export default class PrediccionService {
 
 
     /*================================================================
+        OBTENER RANKING
+    ================================================================*/
+
+    async obtenerRanking(
+        prediccionId
+    ) {
+
+        const referencia =
+            collection(
+
+                db,
+
+                this.coleccion,
+
+                prediccionId,
+
+                this.subcoleccionRanking
+
+            );
+
+
+        const snapshot =
+            await getDocs(
+                referencia
+            );
+
+
+        const ranking =
+            snapshot.docs.map(
+
+                documento => ({
+
+                    ...documento.data()
+
+                })
+
+            );
+
+
+        ranking.sort(
+
+            (
+                a,
+                b
+            ) => {
+
+                const ordenA =
+                    Number(
+                        a.orden ??
+                        a.posicion ??
+                        9999
+                    );
+
+
+                const ordenB =
+                    Number(
+                        b.orden ??
+                        b.posicion ??
+                        9999
+                    );
+
+
+                if (
+                    ordenA !==
+                    ordenB
+                ) {
+
+                    return (
+                        ordenA -
+                        ordenB
+                    );
+
+                }
+
+
+                return (
+
+                    Number(
+                        a.numero
+                    ) -
+
+                    Number(
+                        b.numero
+                    )
+
+                );
+
+            }
+
+        );
+
+
+        return ranking;
+
+    }
+
+
+    /*================================================================
         OBTENER TODAS
     ================================================================*/
 
     async obtenerTodas(
-        direccion = "desc"
+
+        direccion = "desc",
+
+        {
+
+            incluirRanking = false
+
+        } = {}
+
     ) {
 
         try {
@@ -352,7 +1023,7 @@ export default class PrediccionService {
             const sentido =
 
                 direccion ===
-                "asc"
+                    "asc"
 
                     ? "asc"
 
@@ -388,16 +1059,55 @@ export default class PrediccionService {
                 );
 
 
-            return snapshot.docs.map(
+            const lista =
+                snapshot.docs.map(
 
-                documento => ({
+                    documento => ({
 
-                    id:
-                        documento.id,
+                        id:
+                            documento.id,
 
-                    ...documento.data()
+                        ...documento.data()
 
-                })
+                    })
+
+                );
+
+
+            if (
+                incluirRanking !==
+                    true
+            ) {
+
+                return lista;
+
+            }
+
+
+            return await Promise.all(
+
+                lista.map(
+
+                    async item => {
+
+                        const rankingCompleto =
+                            await this
+                                .obtenerRanking(
+                                    item.id
+                                );
+
+
+                        return {
+
+                            ...item,
+
+                            rankingCompleto
+
+                        };
+
+                    }
+
+                )
 
             );
 
@@ -422,7 +1132,9 @@ export default class PrediccionService {
         OBTENER ÚLTIMA
     ================================================================*/
 
-    async obtenerUltima() {
+    async obtenerUltima(
+        incluirRanking = true
+    ) {
 
         try {
 
@@ -446,7 +1158,9 @@ export default class PrediccionService {
                         "desc"
                     ),
 
-                    limit(1)
+                    limit(
+                        1
+                    )
 
                 );
 
@@ -470,12 +1184,43 @@ export default class PrediccionService {
                 snapshot.docs[0];
 
 
-            return {
+            const cabecera = {
 
                 id:
                     documento.id,
 
                 ...documento.data()
+
+            };
+
+
+            if (
+                incluirRanking !==
+                    true
+            ) {
+
+                return {
+
+                    ...cabecera,
+
+                    rankingCompleto:
+                        []
+
+                };
+
+            }
+
+
+            return {
+
+                ...cabecera,
+
+                rankingCompleto:
+
+                    await this
+                        .obtenerRanking(
+                            documento.id
+                        )
 
             };
 
@@ -501,7 +1246,15 @@ export default class PrediccionService {
     ================================================================*/
 
     async obtenerPorSemana(
-        semanaObjetivo
+
+        semanaObjetivo,
+
+        {
+
+            incluirRanking = false
+
+        } = {}
+
     ) {
 
         try {
@@ -515,10 +1268,14 @@ export default class PrediccionService {
             if (
                 !Number.isInteger(
                     semana
-                )
+                ) ||
+                semana <=
+                    0
             ) {
 
-                return [];
+                throw new Error(
+                    `Semana objetivo inválida: ${semanaObjetivo}`
+                );
 
             }
 
@@ -534,11 +1291,10 @@ export default class PrediccionService {
 
 
             /*
-             * Usamos solamente where y luego
-             * ordenamos en memoria.
+             * Se filtra únicamente por semana.
              *
-             * Esto evita necesitar un índice compuesto
-             * para esta consulta.
+             * El orden se realiza luego en JavaScript
+             * para evitar requerir índice compuesto.
              */
 
             const consulta =
@@ -561,7 +1317,7 @@ export default class PrediccionService {
                 );
 
 
-            const resultados =
+            let lista =
                 snapshot.docs.map(
 
                     documento => ({
@@ -576,31 +1332,76 @@ export default class PrediccionService {
                 );
 
 
-            resultados.sort(
+            lista.sort(
 
-                (a, b) =>
+                (
+                    a,
+                    b
+                ) => {
 
-                    new Date(
-                        b.fechaPrediccion ||
-                        0
-                    ) -
+                    const fechaA =
+                        new Date(
+                            a.fechaPrediccion ||
+                            0
+                        )
+                        .getTime();
 
-                    new Date(
-                        a.fechaPrediccion ||
-                        0
-                    )
+
+                    const fechaB =
+                        new Date(
+                            b.fechaPrediccion ||
+                            0
+                        )
+                        .getTime();
+
+
+                    return (
+                        fechaB -
+                        fechaA
+                    );
+
+                }
 
             );
 
 
-            return resultados;
+            if (
+                incluirRanking !==
+                    true
+            ) {
+
+                return lista;
+
+            }
+
+
+            return await Promise.all(
+
+                lista.map(
+
+                    async item => ({
+
+                        ...item,
+
+                        rankingCompleto:
+
+                            await this
+                                .obtenerRanking(
+                                    item.id
+                                )
+
+                    })
+
+                )
+
+            );
 
         }
 
         catch (error) {
 
             console.error(
-                "Error buscando predicción por semana:",
+                "Error obteniendo predicciones por semana:",
                 error
             );
 
@@ -613,109 +1414,149 @@ export default class PrediccionService {
 
 
     /*================================================================
-        OBTENER PENDIENTES
+        OBTENER PENDIENTE POR SEMANA
     ================================================================*/
 
-    async obtenerPendientes() {
+    async obtenerPendientePorSemana(
 
-        try {
+        semanaObjetivo,
 
-            const referencia =
-                collection(
+        {
 
-                    db,
+            incluirRanking = true
 
-                    this.coleccion
+        } = {}
 
-                );
+    ) {
 
+        const lista =
+            await this
+                .obtenerPorSemana(
 
-            const consulta =
-                query(
+                    semanaObjetivo,
 
-                    referencia,
-
-                    where(
-                        "evaluacion.realizada",
-                        "==",
-                        false
-                    )
+                    {
+                        incluirRanking:
+                            false
+                    }
 
                 );
 
 
-            const snapshot =
-                await getDocs(
-                    consulta
-                );
+        const pendiente =
+            lista.find(
 
+                item =>
 
-            const resultados =
-                snapshot.docs.map(
-
-                    documento => ({
-
-                        id:
-                            documento.id,
-
-                        ...documento.data()
-
-                    })
-
-                );
-
-
-            resultados.sort(
-
-                (a, b) =>
-
-                    new Date(
-                        b.fechaPrediccion ||
-                        0
-                    ) -
-
-                    new Date(
-                        a.fechaPrediccion ||
-                        0
-                    )
+                    item.evaluacion
+                        ?.realizada !==
+                        true
 
             );
 
 
-            return resultados;
+        if (
+            !pendiente
+        ) {
+
+            return null;
 
         }
 
-        catch (error) {
 
-            console.error(
-                "Error obteniendo predicciones pendientes:",
-                error
+        if (
+            incluirRanking !==
+                true
+        ) {
+
+            return {
+
+                ...pendiente,
+
+                rankingCompleto:
+                    []
+
+            };
+
+        }
+
+
+        return await this
+            .obtener(
+
+                pendiente.id,
+
+                {
+                    incluirRanking:
+                        true
+                }
+
             );
-
-
-            throw error;
-
-        }
 
     }
 
 
     /*================================================================
-        MARCAR COMO EVALUADA
+        EXISTE PENDIENTE POR SEMANA
+    ================================================================*/
+
+    async existePendientePorSemana(
+        semanaObjetivo
+    ) {
+
+        const pendiente =
+            await this
+                .obtenerPendientePorSemana(
+
+                    semanaObjetivo,
+
+                    {
+                        incluirRanking:
+                            false
+                    }
+
+                );
+
+
+        return (
+            pendiente !==
+            null
+        );
+
+    }
+
+
+    /*================================================================
+        MARCAR EVALUADA
     ================================================================*/
 
     async marcarEvaluada(
-        prediccionId,
+
+        id,
+
         evaluacionId
+
     ) {
 
         try {
 
-            if (!prediccionId) {
+            if (
+                !id
+            ) {
 
                 throw new Error(
                     "No se recibió ID de predicción."
+                );
+
+            }
+
+
+            if (
+                !evaluacionId
+            ) {
+
+                throw new Error(
+                    "No se recibió ID de evaluación."
                 );
 
             }
@@ -729,10 +1570,27 @@ export default class PrediccionService {
                     this.coleccion,
 
                     String(
-                        prediccionId
+                        id
                     )
 
                 );
+
+
+            const snapshot =
+                await getDoc(
+                    referencia
+                );
+
+
+            if (
+                !snapshot.exists()
+            ) {
+
+                throw new Error(
+                    `La predicción ${id} no existe.`
+                );
+
+            }
 
 
             const ahora =
@@ -746,18 +1604,22 @@ export default class PrediccionService {
 
                 {
 
-                    "evaluacion.realizada":
-                        true,
+                    evaluacion: {
 
-                    "evaluacion.evaluacionId":
+                        realizada:
+                            true,
 
-                        evaluacionId ||
-                        null,
+                        evaluacionId:
+                            String(
+                                evaluacionId
+                            ),
 
-                    "evaluacion.fechaEvaluacion":
-                        ahora,
+                        fechaEvaluacion:
+                            ahora
 
-                    modificado:
+                    },
+
+                    "persistencia.actualizadoEn":
                         ahora
 
                 }
@@ -772,134 +1634,7 @@ export default class PrediccionService {
         catch (error) {
 
             console.error(
-                "Error marcando predicción como evaluada:",
-                error
-            );
-
-
-            throw error;
-
-        }
-
-    }
-
-
-    /*================================================================
-        ACTUALIZAR
-    ================================================================*/
-
-    async actualizar(
-        id,
-        cambios = {}
-    ) {
-
-        try {
-
-            if (!id) {
-
-                throw new Error(
-                    "No se recibió ID de predicción."
-                );
-
-            }
-
-
-            const referencia =
-                doc(
-
-                    db,
-
-                    this.coleccion,
-
-                    String(id)
-
-                );
-
-
-            const datos =
-                this.convertirObjetoPlano(
-                    cambios
-                );
-
-
-            datos.modificado =
-                new Date()
-                    .toISOString();
-
-
-            await updateDoc(
-
-                referencia,
-
-                datos
-
-            );
-
-
-            return await this.obtener(
-                id
-            );
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Error actualizando predicción:",
-                error
-            );
-
-
-            throw error;
-
-        }
-
-    }
-
-
-    /*================================================================
-        EXISTE
-    ================================================================*/
-
-    async existe(
-        id
-    ) {
-
-        try {
-
-            if (!id) {
-
-                return false;
-
-            }
-
-
-            const referencia =
-                doc(
-
-                    db,
-
-                    this.coleccion,
-
-                    String(id)
-
-                );
-
-
-            const snapshot =
-                await getDoc(
-                    referencia
-                );
-
-
-            return snapshot.exists();
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Error comprobando predicción:",
+                "Error marcando predicción evaluada:",
                 error
             );
 
@@ -921,27 +1656,35 @@ export default class PrediccionService {
 
         try {
 
-            if (!id) {
+            if (
+                !id
+            ) {
 
                 return false;
 
             }
 
 
-            const referencia =
+            await this
+                .eliminarRanking(
+                    id
+                );
+
+
+            await deleteDoc(
+
                 doc(
 
                     db,
 
                     this.coleccion,
 
-                    String(id)
+                    String(
+                        id
+                    )
 
-                );
+                )
 
-
-            await deleteDoc(
-                referencia
             );
 
 
@@ -965,243 +1708,117 @@ export default class PrediccionService {
 
 
     /*================================================================
-        CONTAR
+        VALIDAR PREDICCIÓN
     ================================================================*/
 
-    async contar() {
-
-        const lista =
-            await this.obtenerTodas();
-
-
-        return lista.length;
-
-    }
-
-
-    /*================================================================
-        CONVERTIR OBJETO A FORMATO FIRESTORE
-    ================================================================*/
-
-    convertirObjetoPlano(
-        valor,
-        visitados = new WeakSet()
+    validarPrediccion(
+        prediccion
     ) {
 
         if (
-            valor === null
-        ) {
-
-            return null;
-
-        }
-
-
-        if (
-            valor === undefined
-        ) {
-
-            return null;
-
-        }
-
-
-        if (
-            typeof valor ===
-                "string" ||
-
-            typeof valor ===
-                "number" ||
-
-            typeof valor ===
-                "boolean"
-        ) {
-
-            return valor;
-
-        }
-
-
-        if (
-            valor instanceof Date
-        ) {
-
-            return valor.toISOString();
-
-        }
-
-
-        if (
-            Array.isArray(
-                valor
-            )
-        ) {
-
-            return valor.map(
-
-                item =>
-                    this.convertirObjetoPlano(
-                        item,
-                        visitados
-                    )
-
-            );
-
-        }
-
-
-        if (
-            valor instanceof Map
-        ) {
-
-            const objeto = {};
-
-
-            for (
-                const [
-                    clave,
-                    contenido
-                ]
-                of valor.entries()
-            ) {
-
-                objeto[String(clave)] =
-                    this.convertirObjetoPlano(
-                        contenido,
-                        visitados
-                    );
-
-            }
-
-
-            return objeto;
-
-        }
-
-
-        if (
-            valor instanceof Set
-        ) {
-
-            return [
-
-                ...valor
-
-            ].map(
-
-                item =>
-                    this.convertirObjetoPlano(
-                        item,
-                        visitados
-                    )
-
-            );
-
-        }
-
-
-        if (
-            typeof valor ===
+            !prediccion ||
+            typeof prediccion !==
                 "object"
         ) {
 
-            if (
-                visitados.has(
-                    valor
-                )
-            ) {
-
-                return null;
-
-            }
-
-
-            visitados.add(
-                valor
+            throw new Error(
+                "La predicción recibida no es válida."
             );
-
-
-            const objeto = {};
-
-
-            for (
-                const [
-                    clave,
-                    contenido
-                ]
-                of Object.entries(
-                    valor
-                )
-            ) {
-
-                if (
-                    typeof contenido ===
-                        "function" ||
-
-                    contenido ===
-                        undefined
-                ) {
-
-                    continue;
-
-                }
-
-
-                objeto[clave] =
-                    this.convertirObjetoPlano(
-                        contenido,
-                        visitados
-                    );
-
-            }
-
-
-            visitados.delete(
-                valor
-            );
-
-
-            return objeto;
 
         }
 
 
-        return null;
+        if (
+            !prediccion.id
+        ) {
+
+            throw new Error(
+                "La predicción no posee ID."
+            );
+
+        }
+
+
+        const semana =
+            Number(
+                prediccion
+                    .semanaObjetivo
+            );
+
+
+        if (
+            !Number.isInteger(
+                semana
+            ) ||
+            semana <=
+                0
+        ) {
+
+            throw new Error(
+                "La predicción no posee una semana objetivo válida."
+            );
+
+        }
+
+
+        if (
+            !Array.isArray(
+                prediccion.top10
+            )
+        ) {
+
+            throw new Error(
+                "La predicción no posee Top 10 válido."
+            );
+
+        }
+
+
+        if (
+            !Array.isArray(
+                prediccion.top20
+            )
+        ) {
+
+            throw new Error(
+                "La predicción no posee Top 20 válido."
+            );
+
+        }
+
+
+        return true;
 
     }
 
 
     /*================================================================
-        GENERAR ID
+        ESTADO
     ================================================================*/
 
-    generarId() {
+    obtenerEstado() {
 
-        const fecha =
-            new Date()
+        return {
 
-                .toISOString()
+            nombre:
+                this.nombre,
 
-                .replace(
-                    /[^0-9]/g,
-                    ""
-                );
+            version:
+                this.version,
 
+            coleccion:
+                this.coleccion,
 
-        const aleatorio =
-            Math.random()
+            subcoleccionRanking:
+                this.subcoleccionRanking,
 
-                .toString(36)
+            controlDuplicados:
+                true,
 
-                .substring(
-                    2,
-                    8
-                );
+            limpiezaUndefined:
+                true
 
-
-        return (
-            `prediccion_${fecha}_${aleatorio}`
-        );
+        };
 
     }
 

@@ -4,19 +4,41 @@
  * Archivo:
  * js/motores/MotorManager.js
  *
+ * Versión:
+ * 1.1.0
+ *
  * Propósito:
  *
  * Coordinar la ejecución de todos los motores heurísticos del sistema.
  *
  * Responsabilidades:
  *
- *   - Inicializar motores
- *   - Ejecutar todos los motores para un número
- *   - Aplicar pesos
- *   - Considerar confianza de cada motor
- *   - Calcular score global
- *   - Analizar los números 00-99
- *   - Generar resultados ordenables para MotorRanking
+ *   - Inicializar motores.
+ *   - Ejecutar todos los motores para un número.
+ *   - Aplicar pesos configurados.
+ *   - Considerar confianza de cada motor.
+ *   - Calcular score global.
+ *   - Analizar los números 00-99.
+ *   - Generar resultados ordenables para MotorRanking.
+ *   - Permitir actualización dinámica de pesos.
+ *
+ *
+ * CAMBIOS v1.1.0
+ *
+ *   - Los pesos configurados tienen prioridad sobre MotorResult.peso.
+ *   - MotorResult.peso queda como respaldo/fallback.
+ *   - Se agrega establecerPesos().
+ *   - Se agrega obtenerPesoMotor().
+ *   - Se agrega restaurarPesosPredeterminados().
+ *   - Se agrega obtenerPesosPredeterminados().
+ *   - detallePesos informa:
+ *
+ *       pesoMotorResult
+ *       pesoConfigurado
+ *       peso
+ *
+ *   - Se mantiene compatibilidad con la arquitectura existente.
+ *
  *
  * IMPORTANTE:
  *
@@ -33,29 +55,38 @@
 import MotorFrecuencia
     from "./MotorFrecuencia.js";
 
+
 import MotorAtraso
     from "./MotorAtraso.js";
+
 
 import MotorTendencia
     from "./MotorTendencia.js";
 
+
 import MotorRepeticion
     from "./MotorRepeticion.js";
+
 
 import MotorHistorico
     from "./MotorHistorico.js";
 
+
 import MotorParidad
     from "./MotorParidad.js";
+
 
 import MotorRangos
     from "./MotorRangos.js";
 
+
 import MotorDistribucion
     from "./MotorDistribucion.js";
 
+
 import MotorAsociaciones
     from "./MotorAsociaciones.js";
+
 
 import MotorCiclos
     from "./MotorCiclos.js";
@@ -68,24 +99,47 @@ import MotorCiclos
 export default class MotorManager {
 
 
+    /*================================================================
+        CONSTRUCTOR
+    ================================================================*/
+
     constructor() {
+
+
+        /*============================================================
+            IDENTIDAD
+        ============================================================*/
+
+        this.nombre =
+            "MotorManager";
+
+
+        this.version =
+            "1.1.0";
+
 
         /*============================================================
             ESTADO
         ============================================================*/
 
-        this.inicializado = false;
+        this.inicializado =
+            false;
 
 
         /*============================================================
             DATOS
         ============================================================*/
 
-        this.historial = [];
+        this.historial =
+            [];
 
-        this.estadisticas = [];
 
-        this.configuracion = {};
+        this.estadisticas =
+            [];
+
+
+        this.configuracion =
+            {};
 
 
         /*============================================================
@@ -95,29 +149,38 @@ export default class MotorManager {
         this.motorFrecuencia =
             new MotorFrecuencia();
 
+
         this.motorAtraso =
             new MotorAtraso();
+
 
         this.motorTendencia =
             new MotorTendencia();
 
+
         this.motorRepeticion =
             new MotorRepeticion();
+
 
         this.motorHistorico =
             new MotorHistorico();
 
+
         this.motorParidad =
             new MotorParidad();
+
 
         this.motorRangos =
             new MotorRangos();
 
+
         this.motorDistribucion =
             new MotorDistribucion();
 
+
         this.motorAsociaciones =
             new MotorAsociaciones();
+
 
         this.motorCiclos =
             new MotorCiclos();
@@ -130,53 +193,83 @@ export default class MotorManager {
         this.motores = [
 
             {
-                clave: "frecuencia",
-                instancia: this.motorFrecuencia
+                clave:
+                    "frecuencia",
+
+                instancia:
+                    this.motorFrecuencia
             },
 
             {
-                clave: "atraso",
-                instancia: this.motorAtraso
+                clave:
+                    "atraso",
+
+                instancia:
+                    this.motorAtraso
             },
 
             {
-                clave: "tendencia",
-                instancia: this.motorTendencia
+                clave:
+                    "tendencia",
+
+                instancia:
+                    this.motorTendencia
             },
 
             {
-                clave: "repeticion",
-                instancia: this.motorRepeticion
+                clave:
+                    "repeticion",
+
+                instancia:
+                    this.motorRepeticion
             },
 
             {
-                clave: "historico",
-                instancia: this.motorHistorico
+                clave:
+                    "historico",
+
+                instancia:
+                    this.motorHistorico
             },
 
             {
-                clave: "paridad",
-                instancia: this.motorParidad
+                clave:
+                    "paridad",
+
+                instancia:
+                    this.motorParidad
             },
 
             {
-                clave: "rangos",
-                instancia: this.motorRangos
+                clave:
+                    "rangos",
+
+                instancia:
+                    this.motorRangos
             },
 
             {
-                clave: "distribucion",
-                instancia: this.motorDistribucion
+                clave:
+                    "distribucion",
+
+                instancia:
+                    this.motorDistribucion
             },
 
             {
-                clave: "asociaciones",
-                instancia: this.motorAsociaciones
+                clave:
+                    "asociaciones",
+
+                instancia:
+                    this.motorAsociaciones
             },
 
             {
-                clave: "ciclos",
-                instancia: this.motorCiclos
+                clave:
+                    "ciclos",
+
+                instancia:
+                    this.motorCiclos
             }
 
         ];
@@ -189,12 +282,21 @@ export default class MotorManager {
     ================================================================*/
 
     inicializar({
+
         historial = [],
+
         estadisticas = [],
+
         configuracion = {}
+
     } = {}) {
 
-        if (!Array.isArray(historial)) {
+
+        if (
+            !Array.isArray(
+                historial
+            )
+        ) {
 
             throw new Error(
                 "MotorManager: historial debe ser un array."
@@ -203,7 +305,11 @@ export default class MotorManager {
         }
 
 
-        if (!Array.isArray(estadisticas)) {
+        if (
+            !Array.isArray(
+                estadisticas
+            )
+        ) {
 
             throw new Error(
                 "MotorManager: estadisticas debe ser un array."
@@ -215,11 +321,44 @@ export default class MotorManager {
         this.historial =
             historial;
 
+
         this.estadisticas =
             estadisticas;
 
+
         this.configuracion =
-            configuracion || {};
+            configuracion &&
+            typeof configuracion ===
+                "object"
+
+                ? {
+                    ...configuracion
+                }
+
+                : {};
+
+
+        /*
+         * Normalizamos pesos configurados
+         * si fueron proporcionados.
+         */
+
+        if (
+            this.configuracion.pesos &&
+            typeof this.configuracion.pesos ===
+                "object"
+        ) {
+
+            this.configuracion.pesos =
+                this.normalizarPesos(
+
+                    this.configuracion.pesos,
+
+                    false
+
+                );
+
+        }
 
 
         const contextoBase = {
@@ -267,7 +406,8 @@ export default class MotorManager {
         }
 
 
-        this.inicializado = true;
+        this.inicializado =
+            true;
 
 
         return this;
@@ -281,7 +421,9 @@ export default class MotorManager {
 
     verificarInicializacion() {
 
-        if (!this.inicializado) {
+        if (
+            !this.inicializado
+        ) {
 
             throw new Error(
                 "MotorManager no está inicializado."
@@ -293,43 +435,151 @@ export default class MotorManager {
 
 
     /*================================================================
+        PESOS PREDETERMINADOS
+    ================================================================*/
+
+    obtenerPesosPredeterminados() {
+
+        return {
+
+            frecuencia:
+                15,
+
+            atraso:
+                10,
+
+            tendencia:
+                20,
+
+            repeticion:
+                10,
+
+            historico:
+                15,
+
+            paridad:
+                5,
+
+            rangos:
+                5,
+
+            distribucion:
+                5,
+
+            asociaciones:
+                10,
+
+            ciclos:
+                15
+
+        };
+
+    }
+
+
+    /*================================================================
+        NORMALIZAR PESOS
+    ================================================================*/
+
+    normalizarPesos(
+        pesos = {},
+        exigirTodos = false
+    ) {
+
+        if (
+            !pesos ||
+            typeof pesos !==
+                "object"
+        ) {
+
+            throw new Error(
+                "MotorManager: pesos debe ser un objeto."
+            );
+
+        }
+
+
+        const predeterminados =
+            this.obtenerPesosPredeterminados();
+
+
+        const resultado =
+            exigirTodos
+
+                ? {}
+
+                : {
+                    ...predeterminados
+                };
+
+
+        for (
+            const clave
+            of Object.keys(
+                predeterminados
+            )
+        ) {
+
+            if (
+                pesos[clave] ===
+                undefined
+            ) {
+
+                if (
+                    exigirTodos
+                ) {
+
+                    throw new Error(
+                        `MotorManager: falta el peso del motor ${clave}.`
+                    );
+
+                }
+
+
+                continue;
+
+            }
+
+
+            const valor =
+                Number(
+                    pesos[clave]
+                );
+
+
+            if (
+                !Number.isFinite(
+                    valor
+                ) ||
+                valor < 0
+            ) {
+
+                throw new Error(
+                    `MotorManager: peso inválido para ${clave}: ${pesos[clave]}`
+                );
+
+            }
+
+
+            resultado[clave] =
+                valor;
+
+        }
+
+
+        return resultado;
+
+    }
+
+
+    /*================================================================
         OBTENER PESOS
     ================================================================*/
 
     obtenerPesos() {
 
-        /*
-         * Pesos globales provisionales.
-         *
-         * No es obligatorio que sumen 100 porque
-         * posteriormente son normalizados.
-         *
-         * En MotorEvolucion podrán ser modificados.
-         */
-
-        const predeterminados = {
-
-            frecuencia: 15,
-
-            atraso: 10,
-
-            tendencia: 20,
-
-            repeticion: 10,
-
-            historico: 15,
-
-            paridad: 5,
-
-            rangos: 5,
-
-            distribucion: 5,
-
-            asociaciones: 10,
-
-            ciclos: 15
-
-        };
+        const predeterminados =
+            this.obtenerPesosPredeterminados();
 
 
         const personalizados =
@@ -344,13 +594,342 @@ export default class MotorManager {
                 : {};
 
 
-        return {
+        const resultado = {
 
-            ...predeterminados,
-
-            ...personalizados
+            ...predeterminados
 
         };
+
+
+        for (
+            const clave
+            of Object.keys(
+                predeterminados
+            )
+        ) {
+
+            const valor =
+                Number(
+                    personalizados[
+                        clave
+                    ]
+                );
+
+
+            if (
+                Number.isFinite(
+                    valor
+                ) &&
+                valor >= 0
+            ) {
+
+                resultado[
+                    clave
+                ] = valor;
+
+            }
+
+        }
+
+
+        return resultado;
+
+    }
+
+
+    /*================================================================
+        ESTABLECER PESOS
+    ================================================================*/
+
+    establecerPesos(
+        pesos = {}
+    ) {
+
+        if (
+            !pesos ||
+            typeof pesos !==
+                "object"
+        ) {
+
+            throw new Error(
+                "MotorManager: pesos debe ser un objeto."
+            );
+
+        }
+
+
+        const actuales =
+            this.obtenerPesos();
+
+
+        const nuevos = {
+
+            ...actuales
+
+        };
+
+
+        for (
+            const clave
+            of Object.keys(
+                actuales
+            )
+        ) {
+
+            if (
+                pesos[clave] ===
+                undefined
+            ) {
+
+                continue;
+
+            }
+
+
+            const valor =
+                Number(
+                    pesos[clave]
+                );
+
+
+            if (
+                !Number.isFinite(
+                    valor
+                ) ||
+                valor < 0
+            ) {
+
+                throw new Error(
+                    `MotorManager: peso inválido para ${clave}: ${pesos[clave]}`
+                );
+
+            }
+
+
+            nuevos[
+                clave
+            ] = valor;
+
+        }
+
+
+        /*
+         * Actualizamos configuración principal.
+         */
+
+        this.configuracion = {
+
+            ...this.configuracion,
+
+            pesos: {
+
+                ...nuevos
+
+            }
+
+        };
+
+
+        /*
+         * No es obligatorio reinicializar los motores.
+         *
+         * Cada llamada a calcular() recibe un nuevo contexto
+         * generado por crearContexto(), que contiene los pesos
+         * actualizados.
+         *
+         * No obstante, si alguna implementación mantiene
+         * configuracion internamente, la sincronizamos cuando
+         * es posible.
+         */
+
+        for (
+            const item
+            of this.motores
+        ) {
+
+            const motor =
+                item.instancia;
+
+
+            if (
+                !motor
+            ) {
+
+                continue;
+
+            }
+
+
+            if (
+                motor.configuracion &&
+                typeof motor.configuracion ===
+                    "object"
+            ) {
+
+                motor.configuracion = {
+
+                    ...motor.configuracion,
+
+                    pesos: {
+
+                        ...nuevos
+
+                    }
+
+                };
+
+            }
+
+
+            if (
+                motor.contexto &&
+                typeof motor.contexto ===
+                    "object"
+            ) {
+
+                motor.contexto = {
+
+                    ...motor.contexto,
+
+                    configuracion:
+                        this.configuracion,
+
+                    pesos: {
+
+                        ...nuevos
+
+                    }
+
+                };
+
+            }
+
+        }
+
+
+        return {
+
+            ...nuevos
+
+        };
+
+    }
+
+
+    /*================================================================
+        OBTENER PESO DE MOTOR
+    ================================================================*/
+
+    obtenerPesoMotor(
+        clave
+    ) {
+
+        if (
+            !clave
+        ) {
+
+            return null;
+
+        }
+
+
+        const pesos =
+            this.obtenerPesos();
+
+
+        if (
+            !Object.prototype
+                .hasOwnProperty
+                .call(
+                    pesos,
+                    clave
+                )
+        ) {
+
+            return null;
+
+        }
+
+
+        const valor =
+            Number(
+                pesos[
+                    clave
+                ]
+            );
+
+
+        return Number.isFinite(
+            valor
+        )
+
+            ? valor
+
+            : null;
+
+    }
+
+
+    /*================================================================
+        RESTAURAR PESOS PREDETERMINADOS
+    ================================================================*/
+
+    restaurarPesosPredeterminados() {
+
+        const predeterminados =
+            this.obtenerPesosPredeterminados();
+
+
+        return this.establecerPesos(
+            predeterminados
+        );
+
+    }
+
+
+    /*================================================================
+        SUMA DE PESOS
+    ================================================================*/
+
+    sumarPesos(
+        pesos = null
+    ) {
+
+        const objetivo =
+            pesos &&
+            typeof pesos ===
+                "object"
+
+                ? pesos
+
+                : this.obtenerPesos();
+
+
+        return this.redondear(
+
+            Object.values(
+                objetivo
+            ).reduce(
+
+                (
+                    suma,
+                    valor
+                ) =>
+
+                    suma +
+                    (
+                        Number(
+                            valor
+                        ) || 0
+                    ),
+
+                0
+
+            ),
+
+            6
+
+        );
 
     }
 
@@ -366,6 +945,39 @@ export default class MotorManager {
         this.verificarInicializacion();
 
 
+        /*
+         * Pesos operativos actuales.
+         */
+
+        const pesos =
+            this.obtenerPesos();
+
+
+        /*
+         * Permitimos configuración adicional,
+         * pero los pesos operativos permanecen
+         * controlados por MotorManager.
+         */
+
+        const configuracion = {
+
+            ...this.configuracion,
+
+            ...(
+                configuracionAdicional
+                    .configuracion ||
+                {}
+            ),
+
+            pesos: {
+
+                ...pesos
+
+            }
+
+        };
+
+
         return {
 
             historial:
@@ -377,13 +989,30 @@ export default class MotorManager {
             estadisticas:
                 this.estadisticas,
 
-            configuracion:
-                this.configuracion,
+            configuracion,
 
-            pesos:
-                this.obtenerPesos(),
+            pesos: {
 
-            ...configuracionAdicional
+                ...pesos
+
+            },
+
+            ...configuracionAdicional,
+
+            /*
+             * Reafirmamos pesos y configuración
+             * después del spread para evitar que
+             * una configuración adicional los
+             * reemplace accidentalmente.
+             */
+
+            configuracion,
+
+            pesos: {
+
+                ...pesos
+
+            }
 
         };
 
@@ -394,14 +1023,20 @@ export default class MotorManager {
         VALIDAR NÚMERO
     ================================================================*/
 
-    validarNumero(numero) {
+    validarNumero(
+        numero
+    ) {
 
         const valor =
-            Number(numero);
+            Number(
+                numero
+            );
 
 
         if (
-            !Number.isInteger(valor) ||
+            !Number.isInteger(
+                valor
+            ) ||
             valor < 0 ||
             valor > 99
         ) {
@@ -442,7 +1077,8 @@ export default class MotorManager {
             );
 
 
-        const resultados = {};
+        const resultados =
+            {};
 
 
         /*------------------------------------------------------------
@@ -504,7 +1140,9 @@ export default class MotorManager {
             numero:
                 numeroValidado,
 
+
             numeroTexto:
+
                 String(
                     numeroValidado
                 ).padStart(
@@ -512,30 +1150,50 @@ export default class MotorManager {
                     "0"
                 ),
 
+
             score:
                 combinacion.score,
+
 
             scoreBruto:
                 combinacion.scoreBruto,
 
+
             confianza:
                 combinacion.confianza,
+
 
             pesoTotal:
                 combinacion.pesoTotal,
 
+
             motoresUtilizados:
                 combinacion.motoresUtilizados,
+
 
             motoresDisponibles:
                 this.motores.length,
 
+
             resultados,
+
 
             detallePesos:
                 combinacion.detallePesos,
 
+
+            pesosConfigurados:
+
+                this.obtenerPesos(),
+
+
+            sumaPesosConfigurados:
+
+                this.sumarPesos(),
+
+
             creado:
+
                 new Date()
                     .toISOString()
 
@@ -552,18 +1210,37 @@ export default class MotorManager {
         resultados
     ) {
 
-        let sumaPonderada = 0;
-
-        let pesoTotal = 0;
-
-        let sumaConfianza = 0;
-
-        let pesoConfianza = 0;
-
-        let motoresUtilizados = 0;
+        let sumaPonderada =
+            0;
 
 
-        const detallePesos = [];
+        let pesoTotal =
+            0;
+
+
+        let sumaConfianza =
+            0;
+
+
+        let pesoConfianza =
+            0;
+
+
+        let motoresUtilizados =
+            0;
+
+
+        const detallePesos =
+            [];
+
+
+        /*
+         * Recuperamos una sola vez los pesos operativos
+         * para todo el cálculo.
+         */
+
+        const pesosConfigurados =
+            this.obtenerPesos();
 
 
         for (
@@ -577,12 +1254,18 @@ export default class MotorManager {
                 ];
 
 
-            if (!resultado) {
+            if (
+                !resultado
+            ) {
 
                 continue;
 
             }
 
+
+            /*--------------------------------------------------------
+                SCORE MOTOR
+            --------------------------------------------------------*/
 
             const score =
                 this.limitar(
@@ -598,6 +1281,10 @@ export default class MotorManager {
                 );
 
 
+            /*--------------------------------------------------------
+                CONFIANZA MOTOR
+            --------------------------------------------------------*/
+
             const confianza =
                 this.limitar(
 
@@ -612,16 +1299,72 @@ export default class MotorManager {
                 );
 
 
-            let peso =
+            /*--------------------------------------------------------
+                PESO MOTOR RESULT
+            --------------------------------------------------------*/
+
+            const pesoMotorResultOriginal =
                 Number(
                     resultado.peso
                 );
 
 
+            const pesoMotorResult =
+
+                Number.isFinite(
+                    pesoMotorResultOriginal
+                ) &&
+                pesoMotorResultOriginal >=
+                    0
+
+                    ? pesoMotorResultOriginal
+
+                    : null;
+
+
+            /*--------------------------------------------------------
+                PESO CONFIGURADO
+            --------------------------------------------------------*/
+
+            const pesoConfiguradoOriginal =
+                Number(
+                    pesosConfigurados[
+                        item.clave
+                    ]
+                );
+
+
+            const pesoConfigurado =
+
+                Number.isFinite(
+                    pesoConfiguradoOriginal
+                ) &&
+                pesoConfiguradoOriginal >=
+                    0
+
+                    ? pesoConfiguradoOriginal
+
+                    : null;
+
+
+            /*--------------------------------------------------------
+                PESO OPERATIVO
+            --------------------------------------------------------*/
+
             /*
-             * Si el MotorResult no devuelve un peso
-             * válido, usamos el peso configurado.
+             * PRIORIDAD v1.1.0
+             *
+             * 1. Peso configurado activamente.
+             * 2. Peso declarado por MotorResult.
+             * 3. Cero.
+             *
+             * Esto permite que ConfiguracionPesosService
+             * controle realmente el score de MotorManager.
              */
+
+            let peso =
+                pesoConfigurado;
+
 
             if (
                 !Number.isFinite(
@@ -631,18 +1374,29 @@ export default class MotorManager {
             ) {
 
                 peso =
-                    Number(
-                        this.obtenerPesos()[
-                            item.clave
-                        ]
-                    ) || 0;
+                    pesoMotorResult;
 
             }
 
 
+            if (
+                !Number.isFinite(
+                    peso
+                ) ||
+                peso < 0
+            ) {
+
+                peso =
+                    0;
+
+            }
+
+
+            /*--------------------------------------------------------
+                FACTOR DE CONFIANZA
+            --------------------------------------------------------*/
+
             /*
-             * Factor de confianza.
-             *
              * No anulamos completamente un motor
              * con confianza baja.
              *
@@ -659,14 +1413,16 @@ export default class MotorManager {
                 0.25 +
 
                 (
-
                     confianza /
                     100
-
                 ) *
 
                 0.75;
 
+
+            /*--------------------------------------------------------
+                PESO EFECTIVO
+            --------------------------------------------------------*/
 
             const pesoEfectivo =
 
@@ -675,16 +1431,29 @@ export default class MotorManager {
                 factorConfianza;
 
 
-            sumaPonderada +=
+            /*--------------------------------------------------------
+                APORTE
+            --------------------------------------------------------*/
+
+            const aporte =
 
                 score *
 
                 pesoEfectivo;
 
 
+            sumaPonderada +=
+                aporte;
+
+
             pesoTotal +=
                 pesoEfectivo;
 
+
+            /*
+             * La confianza global se pondera con el
+             * peso operativo sin factor de confianza.
+             */
 
             sumaConfianza +=
 
@@ -700,59 +1469,134 @@ export default class MotorManager {
             motoresUtilizados++;
 
 
+            /*--------------------------------------------------------
+                DETALLE DE AUDITORÍA
+            --------------------------------------------------------*/
+
             detallePesos.push({
 
                 motor:
+
                     resultado.motor ||
                     item.clave,
+
 
                 clave:
                     item.clave,
 
+
                 score:
+
                     this.redondear(
                         score,
                         4
                     ),
 
+
                 confianza:
+
                     this.redondear(
                         confianza,
                         4
                     ),
 
+
+                /*
+                 * Peso reportado originalmente
+                 * por el motor individual.
+                 */
+
+                pesoMotorResult:
+
+                    pesoMotorResult !==
+                    null
+
+                        ? this.redondear(
+                            pesoMotorResult,
+                            6
+                        )
+
+                        : null,
+
+
+                /*
+                 * Peso procedente de la configuración
+                 * activa del manager.
+                 */
+
+                pesoConfigurado:
+
+                    pesoConfigurado !==
+                    null
+
+                        ? this.redondear(
+                            pesoConfigurado,
+                            6
+                        )
+
+                        : null,
+
+
+                /*
+                 * Peso realmente utilizado.
+                 */
+
                 peso:
+
                     this.redondear(
                         peso,
-                        4
+                        6
                     ),
+
+
+                fuentePeso:
+
+                    pesoConfigurado !==
+                    null
+
+                        ? "CONFIGURACION"
+
+                        : (
+                            pesoMotorResult !==
+                            null
+
+                                ? "MOTOR_RESULT"
+
+                                : "CERO"
+                        ),
+
 
                 factorConfianza:
+
                     this.redondear(
                         factorConfianza,
-                        4
+                        6
                     ),
+
 
                 pesoEfectivo:
+
                     this.redondear(
                         pesoEfectivo,
-                        4
+                        6
                     ),
 
+
                 aporte:
+
                     this.redondear(
-
-                        score *
-                        pesoEfectivo,
-
-                        4
-
+                        aporte,
+                        6
                     )
 
             });
 
         }
 
+
+        /*------------------------------------------------------------
+            SCORE GLOBAL
+        ------------------------------------------------------------*/
 
         const scoreBruto =
 
@@ -763,6 +1607,10 @@ export default class MotorManager {
 
                 : 0;
 
+
+        /*------------------------------------------------------------
+            CONFIANZA GLOBAL
+        ------------------------------------------------------------*/
 
         const confianzaGlobal =
 
@@ -777,38 +1625,53 @@ export default class MotorManager {
         return {
 
             score:
+
                 this.redondear(
+
                     this.limitar(
                         scoreBruto,
                         0,
                         100
                     ),
+
                     4
+
                 ),
 
+
             scoreBruto:
+
                 this.redondear(
                     scoreBruto,
                     6
                 ),
 
+
             confianza:
+
                 this.redondear(
+
                     this.limitar(
                         confianzaGlobal,
                         0,
                         100
                     ),
+
                     4
+
                 ),
+
 
             pesoTotal:
+
                 this.redondear(
                     pesoTotal,
-                    4
+                    6
                 ),
 
+
             motoresUtilizados,
+
 
             detallePesos
 
@@ -828,7 +1691,8 @@ export default class MotorManager {
         this.verificarInicializacion();
 
 
-        const resultados = [];
+        const resultados =
+            [];
 
 
         for (
@@ -882,7 +1746,10 @@ export default class MotorManager {
 
         ].sort(
 
-            (a, b) => {
+            (
+                a,
+                b
+            ) => {
 
                 /*
                  * Primero score.
@@ -900,7 +1767,8 @@ export default class MotorManager {
 
 
                 if (
-                    diferenciaScore !== 0
+                    diferenciaScore !==
+                    0
                 ) {
 
                     return diferenciaScore;
@@ -924,7 +1792,8 @@ export default class MotorManager {
 
 
                 if (
-                    diferenciaConfianza !== 0
+                    diferenciaConfianza !==
+                    0
                 ) {
 
                     return diferenciaConfianza;
@@ -977,16 +1846,24 @@ export default class MotorManager {
 
 
         const cantidad =
+
             Number.isInteger(
-                Number(limite)
+                Number(
+                    limite
+                )
             )
 
                 ? Math.max(
+
                     1,
+
                     Math.min(
-                        Number(limite),
+                        Number(
+                            limite
+                        ),
                         100
                     )
+
                 )
 
                 : 100;
@@ -1026,40 +1903,79 @@ export default class MotorManager {
 
     obtenerInformacion() {
 
+        const pesos =
+            this.obtenerPesos();
+
+
         return {
+
+            nombre:
+                this.nombre,
+
+
+            version:
+                this.version,
+
 
             inicializado:
                 this.inicializado,
 
+
             historial:
                 this.historial.length,
+
 
             estadisticas:
                 this.estadisticas.length,
 
+
             cantidadMotores:
                 this.motores.length,
 
+
             motores:
+
                 this.motores.map(
+
                     item => ({
 
                         clave:
                             item.clave,
 
                         nombre:
+
                             item.instancia
-                                ?.nombre || null,
+                                ?.nombre ||
+                            null,
 
                         version:
+
                             item.instancia
-                                ?.version || null
+                                ?.version ||
+                            null
 
                     })
+
                 ),
 
-            pesos:
-                this.obtenerPesos()
+
+            pesos: {
+
+                ...pesos
+
+            },
+
+
+            sumaPesos:
+
+                this.sumarPesos(
+                    pesos
+                ),
+
+
+            pesosPredeterminados:
+
+                this.obtenerPesosPredeterminados()
 
         };
 
@@ -1086,10 +2002,13 @@ export default class MotorManager {
 
 
         return (
+
             analisis.resultados[
                 motor
             ] ||
+
             null
+
         );
 
     }
@@ -1101,13 +2020,20 @@ export default class MotorManager {
 
     reiniciar() {
 
-        this.inicializado = false;
+        this.inicializado =
+            false;
 
-        this.historial = [];
 
-        this.estadisticas = [];
+        this.historial =
+            [];
 
-        this.configuracion = {};
+
+        this.estadisticas =
+            [];
+
+
+        this.configuracion =
+            {};
 
 
         /*
@@ -1126,7 +2052,8 @@ export default class MotorManager {
                     "function"
             ) {
 
-                item.instancia.reiniciar();
+                item.instancia
+                    .reiniciar();
 
             }
 
@@ -1149,7 +2076,9 @@ export default class MotorManager {
     ) {
 
         const numero =
-            Number(valor);
+            Number(
+                valor
+            );
 
 
         if (
@@ -1177,13 +2106,19 @@ export default class MotorManager {
     }
 
 
+    /*================================================================
+        REDONDEAR
+    ================================================================*/
+
     redondear(
         valor,
         decimales = 2
     ) {
 
         const numero =
-            Number(valor);
+            Number(
+                valor
+            );
 
 
         if (

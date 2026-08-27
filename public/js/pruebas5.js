@@ -5,7 +5,7 @@
  * js/pruebas.js
  *
  * Versión:
- * 3.5.4
+ * 3.5.3
  *
  * Propósito:
  *
@@ -144,7 +144,7 @@ class EntornoPruebas {
     constructor() {
 
         this.version =
-            "3.5.4";
+            "3.5.3";
 
 
         this.inicializado =
@@ -4763,7 +4763,7 @@ listasNumerosIguales(
 
 /*================================================================
     RECARGAR BASE HEURÍSTICA
-    v3.5.4
+    v3.5.1
 ================================================================*/
 
 async recargarBaseHeuristica() {
@@ -4788,20 +4788,9 @@ async recargarBaseHeuristica() {
         1. HISTORIAL
     ------------------------------------------------------------*/
 
-    /*
-     * v3.5.4
-     *
-     * Después de guardar una semana real usamos SemanaService como
-     * fuente directa del historial. Esto evita depender de una capa
-     * intermedia que pueda conservar un estado anterior durante el
-     * mismo ciclo.
-     */
-
     this.datosHistorial =
-        await this.semanaService
-            .obtenerTodas(
-                "asc"
-            );
+        await this.historialService
+            .obtenerHistorial();
 
 
     if (
@@ -4816,19 +4805,8 @@ async recargarBaseHeuristica() {
     }
 
 
-    /*
-     * Orden defensivo adicional por número de semana.
-     */
-
-    this.datosHistorial.sort(
-        (a, b) =>
-            Number(a?.semana ?? 0) -
-            Number(b?.semana ?? 0)
-    );
-
-
     console.log(
-        "Historial actualizado desde SemanaService:",
+        "Historial actualizado:",
         this.datosHistorial.length,
         "semana(s)"
     );
@@ -5100,7 +5078,7 @@ async procesarSemana({
     );
 
     console.log(
-        "PROCESAR SEMANA - FLUJO v3.5.4"
+        "PROCESAR SEMANA - FLUJO v3.5.3"
     );
 
     console.log(
