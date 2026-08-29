@@ -36,7 +36,7 @@
  *   - Auditoría futura independiente de los pesos activos actuales.
  *   - Compatibilidad con predicciones legadas anteriores a v3.6.2.
  *
- * PARCHE v3.6.4
+ * PARCHE v3.6.3
  *
  *   - El diagnóstico adaptativo global usa las evaluaciones
  *     persistidas como fuente de verdad para determinar si
@@ -165,7 +165,7 @@ class EntornoPruebas {
     constructor() {
 
         this.version =
-            "3.6.4";
+            "3.6.3";
 
 
         this.inicializado =
@@ -2572,18 +2572,18 @@ async prepararYGuardarPrediccionSegura(
             .obtenerTrazabilidadActivaPrediccion();
 
 
-    /*
-     * v3.6.4:
-     * NO inyectar trazabilidad dentro de datosSemana antes de llamar
-     * a MotorRanking.prepararPrediccion(). Algunos esquemas de ranking
-     * propagan los metadatos de semana a múltiples nodos y pueden
-     * multiplicar el tamaño del documento padre hasta superar 1 MiB.
-     *
-     * La trazabilidad se adjunta UNA SOLA VEZ al objeto final.
-     */
+    const datosSemanaTrazables = {
+
+        ...datosSemana,
+
+        trazabilidad
+
+    };
+
+
     let prediccion =
         this.prepararPrediccion(
-            datosSemana
+            datosSemanaTrazables
         );
 
 
@@ -5126,7 +5126,7 @@ async prepararYGuardarPrediccionSegura(
                 evaluaciones >=
                 minimo,
 
-            // v3.6.4:
+            // v3.6.3:
             // El estado global se determina con la evidencia persistida
             // recuperada por el entorno (Firestore). El estado interno
             // del motor recién inicializado se conserva aparte solo

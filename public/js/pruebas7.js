@@ -5,7 +5,7 @@
  * js/pruebas.js
  *
  * Versión:
- * 3.6.3
+ * 3.5.4
  *
  * Propósito:
  *
@@ -24,27 +24,6 @@
  *     una semana real.
  *   - Sincronización automática de pesos con MotorManager.
  *   - Generación segura de la siguiente predicción.
- *
- * NUEVO v3.6.2
- *
- *   - Trazabilidad automática de la configuración usada en cada
- *     predicción nueva.
- *   - Snapshot de pesos por motor al momento de generar.
- *   - Vinculación con optimización y evolución de origen.
- *   - Persistencia dual en prediccion.trazabilidad y
- *     prediccion.modelo.trazabilidad para compatibilidad.
- *   - Auditoría futura independiente de los pesos activos actuales.
- *   - Compatibilidad con predicciones legadas anteriores a v3.6.2.
- *
- * PARCHE v3.6.4
- *
- *   - El diagnóstico adaptativo global usa las evaluaciones
- *     persistidas como fuente de verdad para determinar si
- *     Evolución dispone de evidencia suficiente.
- *   - Se conserva por separado el estado interno en memoria de
- *     MotorEvolucion mediante datosSuficientesEvolucionMotor.
- *   - No modifica generación, persistencia ni evaluación de
- *     predicciones.
  *
  * Flujo:
  *
@@ -165,7 +144,7 @@ class EntornoPruebas {
     constructor() {
 
         this.version =
-            "3.6.4";
+            "3.6.0";
 
 
         this.inicializado =
@@ -217,7 +196,7 @@ class EntornoPruebas {
 
 
         /*============================================================
-            CICLO ADAPTATIVO v3.6.1
+            CICLO ADAPTATIVO v3.6.0
         ============================================================*/
 
         this.ultimoCicloAdaptativo =
@@ -2449,8 +2428,8 @@ async guardarPrediccionSegura(
     }
 
     /*================================================================
-    PREPARAR Y GUARDAR PREDICCIÓN SEGURA + TRAZABILIDAD
-    v3.6.2
+    PREPARAR Y GUARDAR PREDICCIÓN SEGURA
+    v3.5.3
 ================================================================*/
 
 async prepararYGuardarPrediccionSegura(
@@ -2560,37 +2539,12 @@ async prepararYGuardarPrediccionSegura(
     /*
      * No existe pendiente.
      *
-     * v3.6.2:
-     * Antes de generar el ranking capturamos la configuración
-     * activa de pesos. La trazabilidad queda congelada en la
-     * predicción y no depende de cuál sea la configuración activa
-     * cuando la predicción se audite en el futuro.
+     * Generamos ranking + predicción.
      */
 
-    const trazabilidad =
-        await this
-            .obtenerTrazabilidadActivaPrediccion();
-
-
-    /*
-     * v3.6.4:
-     * NO inyectar trazabilidad dentro de datosSemana antes de llamar
-     * a MotorRanking.prepararPrediccion(). Algunos esquemas de ranking
-     * propagan los metadatos de semana a múltiples nodos y pueden
-     * multiplicar el tamaño del documento padre hasta superar 1 MiB.
-     *
-     * La trazabilidad se adjunta UNA SOLA VEZ al objeto final.
-     */
-    let prediccion =
+    const prediccion =
         this.prepararPrediccion(
             datosSemana
-        );
-
-
-    prediccion =
-        this.adjuntarTrazabilidadPrediccion(
-            prediccion,
-            trazabilidad
         );
 
 
@@ -3394,7 +3348,7 @@ async prepararYGuardarPrediccionSegura(
 
     /*================================================================
         CICLO ADAPTATIVO REAL
-        v3.6.1
+        v3.6.0
     ================================================================*/
 
     async resolverOptimizacionAdaptativa(
@@ -3979,412 +3933,6 @@ async prepararYGuardarPrediccionSegura(
     }
 
 
-    /*================================================================
-        TRAZABILIDAD AUTOMÁTICA DE PREDICCIONES
-        v3.6.2
-    ================================================================*/
-
-    async obtenerTrazabilidadActivaPrediccion() {
-
-        this.verificarInicializacion();
-
-
-        const configuracion =
-            await this.configuracionPesosService
-                .obtenerConfiguracionActiva();
-
-
-        if (
-            !configuracion
-        ) {
-
-            throw new Error(
-                "No existe una configuración activa de pesos para trazar la predicción."
-            );
-
-        }
-
-
-        const pesos =
-            configuracion.pesos ||
-            this.obtenerPesosActivos();
-
-
-        const pesosNormalizados =
-            Object.fromEntries(
-                Object.entries(pesos)
-                    .map(
-                        ([motor, peso]) => [
-                            motor,
-                            this.redondearNumero(
-                                Number(peso || 0),
-                                6
-                            )
-                        ]
-                    )
-            );
-
-
-        const sincronizacion =
-            this.verificarSincronizacionPesos();
-
-
-        return {
-
-            esquema:
-                "TRAZABILIDAD_PREDICCION_V1",
-
-            versionPruebas:
-                this.version,
-
-            capturadaEn:
-                new Date().toISOString(),
-
-            configuracionId:
-                configuracion.id ??
-                "activa",
-
-            configuracionVersion:
-                configuracion.versionConfiguracion ??
-                configuracion.version ??
-                configuracion.configuracionId ??
-                null,
-
-            origenPesos:
-                configuracion.origen ??
-                "DESCONOCIDO",
-
-            optimizacionId:
-                configuracion.optimizacionId ??
-                null,
-
-            evolucionId:
-                configuracion.evolucionId ??
-                null,
-
-            sumaPesos:
-                this.redondearNumero(
-                    Object.values(pesosNormalizados)
-                        .reduce(
-                            (total, peso) =>
-                                total +
-                                Number(peso || 0),
-                            0
-                        ),
-                    6
-                ),
-
-            sincronizadoAlGenerar:
-                sincronizacion.sincronizado ===
-                true,
-
-            sumaManagerAlGenerar:
-                this.redondearNumero(
-                    Number(
-                        sincronizacion.sumaManager ??
-                        this.motorManager
-                            ?.sumarPesos?.() ??
-                        0
-                    ),
-                    6
-                ),
-
-            pesos:
-                pesosNormalizados
-
-        };
-
-    }
-
-
-    adjuntarTrazabilidadPrediccion(
-        prediccion,
-        trazabilidad
-    ) {
-
-        if (
-            !prediccion ||
-            typeof prediccion !==
-            "object"
-        ) {
-
-            throw new Error(
-                "No se puede adjuntar trazabilidad a una predicción inválida."
-            );
-
-        }
-
-
-        const traza =
-            trazabilidad
-                ? {
-                    ...trazabilidad,
-                    pesos: {
-                        ...(trazabilidad.pesos || {})
-                    }
-                }
-                : null;
-
-
-        if (
-            !traza
-        ) {
-
-            return prediccion;
-
-        }
-
-
-        const modeloActual =
-            prediccion.modelo &&
-            typeof prediccion.modelo ===
-            "object"
-                ? prediccion.modelo
-                : {};
-
-
-        return {
-
-            ...prediccion,
-
-            trazabilidad:
-                traza,
-
-            modelo: {
-
-                ...modeloActual,
-
-                trazabilidad:
-                    traza
-
-            }
-
-        };
-
-    }
-
-
-    obtenerTrazabilidadPrediccion(
-        prediccion
-    ) {
-
-        return (
-            prediccion
-                ?.trazabilidad ??
-            prediccion
-                ?.modelo
-                ?.trazabilidad ??
-            null
-        );
-
-    }
-
-
-    auditarTrazabilidadPrediccion(
-        prediccion,
-        indiceRanking = 0
-    ) {
-
-        const trazabilidad =
-            this.obtenerTrazabilidadPrediccion(
-                prediccion
-            );
-
-
-        if (
-            !trazabilidad
-        ) {
-
-            return {
-                valido: true,
-                disponible: false,
-                legado: true,
-                motivo:
-                    "Predicción creada antes de v3.6.2 o sin trazabilidad persistida."
-            };
-
-        }
-
-
-        const elemento =
-            prediccion
-                ?.rankingCompleto
-                ?.[indiceRanking];
-
-
-        if (
-            !elemento ||
-            !elemento.motores
-        ) {
-
-            return {
-                valido: false,
-                disponible: true,
-                legado: false,
-                motivo:
-                    "No se puede comparar la trazabilidad con el ranking de la predicción."
-            };
-
-        }
-
-
-        const pesosTrazados =
-            trazabilidad.pesos ||
-            {};
-
-
-        const comparacion =
-            Object.entries(
-                pesosTrazados
-            )
-            .map(
-                ([motor, peso]) => {
-
-                    const trazado =
-                        Number(peso || 0);
-
-                    const usado =
-                        Number(
-                            elemento.motores
-                                ?.[motor]
-                                ?.peso ??
-                            0
-                        );
-
-                    const diferencia =
-                        this.redondearNumero(
-                            usado -
-                            trazado,
-                            6
-                        );
-
-                    return {
-                        motor,
-                        trazado:
-                            this.redondearNumero(
-                                trazado,
-                                6
-                            ),
-                        usado:
-                            this.redondearNumero(
-                                usado,
-                                6
-                            ),
-                        diferencia,
-                        coincide:
-                            Math.abs(
-                                usado -
-                                trazado
-                            ) <=
-                            0.001
-                    };
-
-                }
-            );
-
-
-        const cantidadMotores =
-            comparacion.length;
-
-
-        const todosCoinciden =
-            cantidadMotores ===
-            10 &&
-            comparacion.every(
-                item =>
-                    item.coincide
-            );
-
-
-        const sumaTrazada =
-            this.redondearNumero(
-                comparacion.reduce(
-                    (total, item) =>
-                        total +
-                        item.trazado,
-                    0
-                ),
-                6
-            );
-
-
-        const sumaUsada =
-            this.redondearNumero(
-                comparacion.reduce(
-                    (total, item) =>
-                        total +
-                        item.usado,
-                    0
-                ),
-                6
-            );
-
-
-        return {
-
-            valido:
-                todosCoinciden &&
-                trazabilidad
-                    .sincronizadoAlGenerar !==
-                false,
-
-            disponible:
-                true,
-
-            legado:
-                false,
-
-            esquema:
-                trazabilidad.esquema ??
-                null,
-
-            versionPruebas:
-                trazabilidad.versionPruebas ??
-                null,
-
-            capturadaEn:
-                trazabilidad.capturadaEn ??
-                null,
-
-            configuracionId:
-                trazabilidad.configuracionId ??
-                null,
-
-            configuracionVersion:
-                trazabilidad.configuracionVersion ??
-                null,
-
-            origenPesos:
-                trazabilidad.origenPesos ??
-                null,
-
-            optimizacionId:
-                trazabilidad.optimizacionId ??
-                null,
-
-            evolucionId:
-                trazabilidad.evolucionId ??
-                null,
-
-            sincronizadoAlGenerar:
-                trazabilidad.sincronizadoAlGenerar ===
-                true,
-
-            cantidadMotores,
-
-            todosCoinciden,
-
-            sumaTrazada,
-
-            sumaUsada,
-
-            comparacion
-
-        };
-
-    }
-
-
     async generarPrediccionPostOptimizacion({
 
         semanaObjetivo,
@@ -4650,555 +4198,240 @@ async prepararYGuardarPrediccionSegura(
     }
 
 
-    auditarPrediccionCompleta(
-        prediccion
+   obtenerEstadoAdaptativo() {
+
+    /*==========================================================
+        ESTADO MOTOR EVOLUCIÓN
+    ==========================================================*/
+
+    let estadoEvolucion =
+        null;
+
+
+    if (
+        this.motorEvolucion &&
+        typeof this.motorEvolucion
+            .obtenerEstado ===
+            "function"
     ) {
 
-        if (
-            !prediccion ||
-            !Array.isArray(
-                prediccion.rankingCompleto
-            ) ||
-            prediccion.rankingCompleto.length ===
-                0
-        ) {
+        try {
 
-            return {
-                valido: false,
-                motivo:
-                    "La predicción no contiene ranking completo."
-            };
+            estadoEvolucion =
+                this.motorEvolucion
+                    .obtenerEstado();
 
         }
 
+        catch (error) {
 
-        const ranking =
-            prediccion.rankingCompleto;
-
-
-        const numeros =
-            ranking.map(
-                item =>
-                    String(item.numero)
+            console.warn(
+                "No se pudo obtener estado de MotorEvolucion:",
+                error
             );
-
-
-        const numerosUnicos =
-            new Set(
-                numeros
-            );
-
-
-        const ordenes =
-            ranking.map(
-                item =>
-                    Number(item.orden)
-            );
-
-
-        const ordenesUnicos =
-            new Set(
-                ordenes
-            );
-
-
-        const ordenSecuencial =
-            ranking.every(
-                (item, indice) =>
-                    Number(item.orden) ===
-                    indice + 1
-            );
-
-
-        const mapaPosiciones =
-            new Map();
-
-
-        for (
-            const item of ranking
-        ) {
-
-            const posicion =
-                Number(
-                    item.posicion
-                );
-
-
-            if (
-                !mapaPosiciones.has(
-                    posicion
-                )
-            ) {
-
-                mapaPosiciones.set(
-                    posicion,
-                    []
-                );
-
-            }
-
-
-            mapaPosiciones
-                .get(posicion)
-                .push(item);
 
         }
-
-
-        const gruposEmpate =
-            [...mapaPosiciones.entries()]
-                .filter(
-                    ([, elementos]) =>
-                        elementos.length > 1
-                )
-                .map(
-                    ([posicion, elementos]) => {
-
-                        const scores =
-                            elementos.map(
-                                item =>
-                                    Number(item.score)
-                            );
-
-
-                        const scoreBase =
-                            scores[0];
-
-
-                        const mismoScore =
-                            scores.every(
-                                score =>
-                                    Math.abs(
-                                        score -
-                                        scoreBase
-                                    ) <=
-                                    0.0001
-                            );
-
-
-                        const todosMarcadosEmpate =
-                            elementos.every(
-                                item =>
-                                    item.empate ===
-                                    true
-                            );
-
-
-                        return {
-
-                            posicion,
-
-                            cantidad:
-                                elementos.length,
-
-                            score:
-                                scoreBase,
-
-                            mismoScore,
-
-                            todosMarcadosEmpate,
-
-                            valido:
-                                mismoScore &&
-                                todosMarcadosEmpate,
-
-                            numeros:
-                                elementos.map(
-                                    item =>
-                                        String(item.numero)
-                                ),
-
-                            ordenes:
-                                elementos.map(
-                                    item =>
-                                        Number(item.orden)
-                                )
-
-                        };
-
-                    }
-                );
-
-
-        const empatesValidos =
-            gruposEmpate.every(
-                grupo =>
-                    grupo.valido
-            );
-
-
-        const auditoriaPesos =
-            this.auditarPesosPrediccion(
-                prediccion
-            );
-
-
-        const auditoriaTrazabilidad =
-            this.auditarTrazabilidadPrediccion(
-                prediccion
-            );
-
-
-        const rankingCompleto =
-            ranking.length ===
-            100;
-
-
-        const numerosValidos =
-            numerosUnicos.size ===
-            ranking.length;
-
-
-        const ordenValido =
-            ordenesUnicos.size ===
-            ranking.length &&
-            ordenSecuencial;
-
-
-        const valido =
-            rankingCompleto &&
-            numerosValidos &&
-            ordenValido &&
-            empatesValidos &&
-            auditoriaPesos.valido ===
-            true &&
-            auditoriaTrazabilidad.valido ===
-            true;
-
-
-        return {
-
-            valido,
-
-            prediccionId:
-                prediccion.id,
-
-            semanaObjetivo:
-                prediccion.semanaObjetivo,
-
-            fechaObjetivo:
-                prediccion.fechaObjetivo,
-
-            evaluada:
-                prediccion.evaluacion
-                    ?.realizada ===
-                true,
-
-            ranking: {
-
-                total:
-                    ranking.length,
-
-                rankingCompleto,
-
-                numerosUnicos:
-                    numerosUnicos.size,
-
-                numerosValidos,
-
-                ordenesUnicos:
-                    ordenesUnicos.size,
-
-                ordenSecuencial,
-
-                ordenValido,
-
-                posicionesUnicas:
-                    mapaPosiciones.size,
-
-                tieneEmpates:
-                    gruposEmpate.length >
-                    0,
-
-                cantidadGruposEmpate:
-                    gruposEmpate.length,
-
-                empatesValidos,
-
-                gruposEmpate
-
-            },
-
-            lider: {
-
-                numero:
-                    ranking[0]
-                        ?.numero ??
-                    null,
-
-                posicion:
-                    ranking[0]
-                        ?.posicion ??
-                    null,
-
-                orden:
-                    ranking[0]
-                        ?.orden ??
-                    null,
-
-                score:
-                    ranking[0]
-                        ?.score ??
-                    null,
-
-                confianza:
-                    ranking[0]
-                        ?.confianza ??
-                    null,
-
-                cantidadMotores:
-                    ranking[0]
-                        ?.cantidadMotores ??
-                    Object.keys(
-                        ranking[0]
-                            ?.motores ??
-                        {}
-                    ).length
-
-            },
-
-            pesos:
-                auditoriaPesos,
-
-            trazabilidad:
-                auditoriaTrazabilidad
-
-        };
 
     }
 
 
-    obtenerEstadoAdaptativo() {
+    /*==========================================================
+        CANTIDAD DE EVALUACIONES
 
-        let estadoEvolucion =
-            null;
+        Fuente principal:
+        evaluaciones realmente recuperadas de Firestore.
 
+        MotorEvolucion queda como respaldo.
+    ==========================================================*/
 
-        if (
-            this.motorEvolucion &&
-            typeof this.motorEvolucion
-                .obtenerEstado ===
-                "function"
-        ) {
-
-            try {
-
-                estadoEvolucion =
-                    this.motorEvolucion
-                        .obtenerEstado();
-
-            }
-
-            catch (error) {
-
-                console.warn(
-                    "No se pudo obtener estado de MotorEvolucion:",
-                    error
-                );
-
-            }
-
-        }
+    const evaluacionesFirestore =
+        Array.isArray(
+            this.evaluacionesPersistidas
+        )
+            ? this.evaluacionesPersistidas.length
+            : 0;
 
 
-        const evaluacionesFirestore =
-            Array.isArray(
-                this.evaluacionesPersistidas
-            )
-                ? this.evaluacionesPersistidas.length
-                : 0;
+    const evaluacionesMotor =
+        Number(
+            estadoEvolucion
+                ?.cantidadEvaluaciones ??
+            this.motorEvolucion
+                ?.cantidadEvaluaciones ??
+            0
+        );
 
 
-        const evaluacionesMotor =
-            Number(
-                estadoEvolucion
-                    ?.cantidadEvaluaciones ??
-                this.motorEvolucion
-                    ?.cantidadEvaluaciones ??
-                0
-            );
-
-
-        const evaluaciones =
-            Math.max(
-                evaluacionesFirestore,
-                evaluacionesMotor
-            );
-
-
-        let estadoOptimizacion =
-            null;
-
-
-        if (
-            this.motorOptimizacion &&
-            typeof this.motorOptimizacion
-                .obtenerEstado ===
-                "function"
-        ) {
-
-            try {
-
-                estadoOptimizacion =
-                    this.motorOptimizacion
-                        .obtenerEstado(
-                            evaluaciones
-                        );
-
-            }
-
-            catch (error) {
-
-                console.warn(
-                    "No se pudo obtener estado de MotorOptimizacion:",
-                    error
-                );
-
-            }
-
-        }
-
-
-        const minimo =
-            Number(
-                estadoOptimizacion
-                    ?.minimoEvaluaciones ??
-                this.motorOptimizacion
-                    ?.minimoEvaluaciones ??
-                20
-            );
-
-
-        let sincronizado =
-            false;
-
-
-        let sumaManager =
-            0;
-
-
-        if (
-            this.motorManager
-        ) {
-
-            try {
-
-                sincronizado =
-                    this
-                        .verificarSincronizacionPesos()
-                        .sincronizado ===
-                    true;
-
-
-                sumaManager =
-                    this.motorManager
-                        .sumarPesos();
-
-            }
-
-            catch (error) {
-
-                console.warn(
-                    "No se pudo verificar sincronización de pesos:",
-                    error
-                );
-
-            }
-
-        }
-
-
-        return {
-
-            versionPruebas:
-                this.version,
-
-            evaluaciones,
-
+    const evaluaciones =
+        Math.max(
             evaluacionesFirestore,
+            evaluacionesMotor
+        );
 
-            evaluacionesMotor,
 
-            minimoEvaluaciones:
-                minimo,
+    /*==========================================================
+        ESTADO MOTOR OPTIMIZACIÓN
+    ==========================================================*/
 
-            umbralAlcanzado:
-                evaluaciones >=
-                minimo,
+    let estadoOptimizacion =
+        null;
 
-            // v3.6.4:
-            // El estado global se determina con la evidencia persistida
-            // recuperada por el entorno (Firestore). El estado interno
-            // del motor recién inicializado se conserva aparte solo
-            // como dato diagnóstico.
-            datosSuficientesEvolucion:
-                evaluaciones >=
-                minimo,
 
-            datosSuficientesEvolucionMotor:
-                estadoEvolucion
-                    ?.datosSuficientes === true,
+    if (
+        this.motorOptimizacion &&
+        typeof this.motorOptimizacion
+            .obtenerEstado ===
+            "function"
+    ) {
 
-            datosSuficientesOptimizacion:
-                estadoOptimizacion
-                    ?.datosSuficientes ??
-                (
-                    evaluaciones >=
-                    minimo
-                ),
+        try {
 
-            semanasHistorial:
-                Array.isArray(
-                    this.datosHistorial
-                )
-                    ? this.datosHistorial.length
-                    : 0,
-
-            sumaPesos:
-                this.sumaPesosBase(),
-
-            sumaManager,
-
-            sincronizado,
-
-            versionMotorEvolucion:
-                estadoEvolucion
-                    ?.version ??
-                this.motorEvolucion
-                    ?.version ??
-                null,
-
-            versionMotorOptimizacion:
-                estadoOptimizacion
-                    ?.version ??
+            estadoOptimizacion =
                 this.motorOptimizacion
-                    ?.version ??
-                null,
+                    .obtenerEstado(
+                        evaluaciones
+                    );
 
-            ultimaOptimizacionId:
-                this.ultimaOptimizacion
-                    ?.id ??
-                this.ultimaOptimizacionFirestore
-                    ?.id ??
-                null,
+        }
 
-            ultimaOptimizacionEstado:
-                this.ultimaOptimizacion
-                    ?.estado ??
-                this.ultimaOptimizacionFirestore
-                    ?.estado ??
-                null,
+        catch (error) {
 
-            estadoEvolucion,
+            console.warn(
+                "No se pudo obtener estado de MotorOptimizacion:",
+                error
+            );
 
-            estadoOptimizacion,
-
-            ultimoCicloAdaptativo:
-                this.ultimoCicloAdaptativo
-
-        };
+        }
 
     }
+
+
+    const minimo =
+        Number(
+            estadoOptimizacion
+                ?.minimoEvaluaciones ??
+            this.motorOptimizacion
+                ?.minimoEvaluaciones ??
+            20
+        );
+
+
+    /*==========================================================
+        SINCRONIZACIÓN DE PESOS
+    ==========================================================*/
+
+    let sincronizado =
+        false;
+
+
+    let sumaManager =
+        0;
+
+
+    if (
+        this.motorManager
+    ) {
+
+        try {
+
+            sincronizado =
+                this
+                    .verificarSincronizacionPesos()
+                    .sincronizado ===
+                true;
+
+
+            sumaManager =
+                this.motorManager
+                    .sumarPesos();
+
+        }
+
+        catch (error) {
+
+            console.warn(
+                "No se pudo verificar sincronización de pesos:",
+                error
+            );
+
+        }
+
+    }
+
+
+    /*==========================================================
+        RESPUESTA
+    ==========================================================*/
+
+    return {
+
+        versionPruebas:
+            this.version,
+
+        evaluaciones,
+
+        evaluacionesFirestore,
+
+        evaluacionesMotor,
+
+        minimoEvaluaciones:
+            minimo,
+
+        umbralAlcanzado:
+            evaluaciones >=
+            minimo,
+
+        datosSuficientesEvolucion:
+            estadoEvolucion
+                ?.datosSuficientes ??
+            (
+                evaluaciones >=
+                minimo
+            ),
+
+        datosSuficientesOptimizacion:
+            estadoOptimizacion
+                ?.datosSuficientes ??
+            (
+                evaluaciones >=
+                minimo
+            ),
+
+        semanasHistorial:
+            Array.isArray(
+                this.datosHistorial
+            )
+                ? this.datosHistorial.length
+                : 0,
+
+        sumaPesos:
+            this.sumaPesosBase(),
+
+        sumaManager,
+
+        sincronizado,
+
+        versionMotorEvolucion:
+            estadoEvolucion
+                ?.version ??
+            this.motorEvolucion
+                ?.version ??
+            null,
+
+        versionMotorOptimizacion:
+            estadoOptimizacion
+                ?.version ??
+            this.motorOptimizacion
+                ?.version ??
+            null,
+
+        estadoEvolucion,
+
+        estadoOptimizacion
+
+    };
+
+}
 
 
     /*================================================================
@@ -6930,7 +6163,7 @@ async recargarBaseHeuristica() {
 
 /*================================================================
     PROCESAR SEMANA
-    v3.6.1
+    v3.6.0
 ================================================================*/
 
 async procesarSemana({
@@ -6973,7 +6206,7 @@ async procesarSemana({
     );
 
     console.log(
-        "PROCESAR SEMANA - FLUJO v3.6.1"
+        "PROCESAR SEMANA - FLUJO v3.6.0"
     );
 
     console.log(

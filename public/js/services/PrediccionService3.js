@@ -5,7 +5,7 @@
  * js/services/PrediccionService.js
  *
  * Versión:
- * 2.3.0
+ * 2.2.0
  *
  * Propósito:
  *
@@ -37,14 +37,7 @@
  *   - rankingCompleto se almacena en una subcolección.
  *
  *
- * NUEVO v2.3.0
- *
- *   - Estado operativo explícito de cada predicción.
- *   - marcarReemplazada() conserva predicciones históricas sin borrarlas.
- *   - obtenerPendientePorSemana() ignora predicciones reemplazadas/inactivas.
- *   - Las nuevas predicciones nacen activas y en estado PENDIENTE.
- *
- * HEREDADO v2.2.0
+ * NUEVO v2.2.0
  *
  *   - Top 10, Top 20, titulares y suplentes se compactan en cabecera.
  *   - El detalle completo de motores queda sólo en la subcolección ranking.
@@ -116,7 +109,7 @@ export default class PrediccionService {
 
 
         this.version =
-            "2.3.0";
+            "2.2.0";
 
 
         this.coleccion =
@@ -486,25 +479,6 @@ export default class PrediccionService {
 
 
                 id,
-
-
-                /*
-                 * v2.3.0:
-                 * estado operativo explícito. Se respetan valores ya
-                 * provistos por el llamador para mantener compatibilidad.
-                 */
-
-                estado:
-                    cabeceraOriginal.estado ??
-                    "PENDIENTE",
-
-                activa:
-                    cabeceraOriginal.activa ??
-                    true,
-
-                reemplazada:
-                    cabeceraOriginal.reemplazada ??
-                    false,
 
 
                 totalRanking:
@@ -1658,24 +1632,7 @@ export default class PrediccionService {
 
                     item.evaluacion
                         ?.realizada !==
-                        true &&
-
-                    item.activa !==
-                        false &&
-
-                    item.reemplazada !==
-                        true &&
-
-                    ![
-                        "REEMPLAZADA",
-                        "SUPERADA",
-                        "ANULADA"
-                    ].includes(
-                        String(
-                            item.estado ||
-                            ""
-                        ).toUpperCase()
-                    )
+                        true
 
             );
 
@@ -1747,224 +1704,6 @@ export default class PrediccionService {
             pendiente !==
             null
         );
-
-    }
-
-
-    /*================================================================
-        MARCAR REEMPLAZADA
-        NUEVO v2.3.0
-    ================================================================*/
-
-    async marcarReemplazada(
-
-        id,
-
-        reemplazadaPor,
-
-        motivo =
-            "REEMPLAZO_MANUAL",
-
-        metadata = {}
-
-    ) {
-
-        try {
-
-            if (
-                !id
-            ) {
-
-                throw new Error(
-                    "No se recibió ID de la predicción a reemplazar."
-                );
-
-            }
-
-
-            if (
-                !reemplazadaPor
-            ) {
-
-                throw new Error(
-                    "No se recibió ID de la predicción reemplazante."
-                );
-
-            }
-
-
-            if (
-                String(id) ===
-                String(reemplazadaPor)
-            ) {
-
-                throw new Error(
-                    "Una predicción no puede reemplazarse por sí misma."
-                );
-
-            }
-
-
-            const referencia =
-                doc(
-
-                    db,
-
-                    this.coleccion,
-
-                    String(
-                        id
-                    )
-
-                );
-
-
-            const snapshot =
-                await getDoc(
-                    referencia
-                );
-
-
-            if (
-                !snapshot.exists()
-            ) {
-
-                throw new Error(
-                    `La predicción ${id} no existe.`
-                );
-
-            }
-
-
-            const ahora =
-                new Date()
-                    .toISOString();
-
-
-            const datos =
-                this.limpiarUndefined({
-
-                    estado:
-                        "REEMPLAZADA",
-
-                    activa:
-                        false,
-
-                    reemplazada:
-                        true,
-
-                    reemplazadaPor:
-                        String(
-                            reemplazadaPor
-                        ),
-
-                    motivoReemplazo:
-                        String(
-                            motivo ||
-                            "REEMPLAZO_MANUAL"
-                        ),
-
-                    reemplazadaEn:
-                        ahora,
-
-                    reemplazo: {
-
-                        prediccionAnterior:
-                            String(
-                                id
-                            ),
-
-                        prediccionNueva:
-                            String(
-                                reemplazadaPor
-                            ),
-
-                        motivo:
-                            String(
-                                motivo ||
-                                "REEMPLAZO_MANUAL"
-                            ),
-
-                        fecha:
-                            ahora,
-
-                        ...(
-                            metadata &&
-                            typeof metadata ===
-                                "object" &&
-                            !Array.isArray(
-                                metadata
-                            )
-
-                                ? metadata
-
-                                : {}
-                        )
-
-                    },
-
-                    persistencia: {
-
-                        ...(
-                            snapshot.data()
-                                ?.persistencia ||
-                            {}
-                        ),
-
-                        actualizadoEn:
-                            ahora
-
-                    }
-
-                });
-
-
-            await setDoc(
-
-                referencia,
-
-                datos,
-
-                {
-                    merge:
-                        true
-                }
-
-            );
-
-
-            console.log(
-
-                `Predicción reemplazada: ${id} -> ${reemplazadaPor}`
-
-            );
-
-
-            return await this
-                .obtener(
-
-                    id,
-
-                    {
-                        incluirRanking:
-                            false
-                    }
-
-                );
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Error marcando predicción reemplazada:",
-                error
-            );
-
-
-            throw error;
-
-        }
 
     }
 
@@ -2259,18 +1998,7 @@ export default class PrediccionService {
                 true,
 
             limpiezaUndefined:
-                true,
-
-            controlReemplazos:
-                true,
-
-            estadosOperativos:
-                [
-                    "PENDIENTE",
-                    "REEMPLAZADA",
-                    "SUPERADA",
-                    "ANULADA"
-                ]
+                true
 
         };
 

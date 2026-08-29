@@ -5,7 +5,7 @@
  * js/services/PrediccionService.js
  *
  * Versión:
- * 2.3.0
+ * 2.1.1
  *
  * Propósito:
  *
@@ -37,20 +37,7 @@
  *   - rankingCompleto se almacena en una subcolección.
  *
  *
- * NUEVO v2.3.0
- *
- *   - Estado operativo explícito de cada predicción.
- *   - marcarReemplazada() conserva predicciones históricas sin borrarlas.
- *   - obtenerPendientePorSemana() ignora predicciones reemplazadas/inactivas.
- *   - Las nuevas predicciones nacen activas y en estado PENDIENTE.
- *
- * HEREDADO v2.2.0
- *
- *   - Top 10, Top 20, titulares y suplentes se compactan en cabecera.
- *   - El detalle completo de motores queda sólo en la subcolección ranking.
- *   - Evita superar el límite de 1 MiB de Firestore por duplicación de detalle.
- *
- * HEREDADO v2.1.1
+ * NUEVO v2.1.1
  *
  *   - Limpieza recursiva de valores undefined antes de persistir.
  *   - Protección de cabecera Firestore.
@@ -116,7 +103,7 @@ export default class PrediccionService {
 
 
         this.version =
-            "2.3.0";
+            "2.1.1";
 
 
         this.coleccion =
@@ -131,8 +118,7 @@ export default class PrediccionService {
 
     /*================================================================
         LIMPIAR UNDEFINED
-        LIMPIAR UNDEFINED
-        HEREDADO v2.1.1
+        NUEVO v2.1.1
     ================================================================*/
 
     limpiarUndefined(
@@ -244,145 +230,6 @@ export default class PrediccionService {
 
 
     /*================================================================
-        COMPACTAR RESÚMENES DE CABECERA
-        NUEVO v2.2.0
-    ================================================================*/
-
-    compactarItemRanking(
-        item
-    ) {
-
-        if (
-            !item ||
-            typeof item !== "object"
-        ) {
-
-            return item;
-
-        }
-
-
-        /*
-         * La cabecera sólo necesita datos de navegación/resumen.
-         * El detalle completo de motores se conserva exclusivamente
-         * en la subcolección ranking.
-         */
-
-        const compacto = {};
-
-        const campos = [
-
-            "numero",
-            "orden",
-            "posicion",
-            "score",
-            "scoreTotal",
-            "puntaje",
-            "confianza",
-            "categoria",
-            "empate"
-
-        ];
-
-
-        campos.forEach(
-
-            campo => {
-
-                if (
-                    item[campo] !== undefined
-                ) {
-
-                    compacto[campo] =
-                        item[campo];
-
-                }
-
-            }
-
-        );
-
-
-        /*
-         * Si el resultado trae pesos usados, guardamos sólo valores
-         * escalares. Nunca copiamos detalle, secuencias, pares o tríos.
-         */
-
-        if (
-            item.pesos &&
-            typeof item.pesos === "object" &&
-            !Array.isArray(item.pesos)
-        ) {
-
-            compacto.pesos = {};
-
-            for (
-                const [
-                    clave,
-                    valor
-                ]
-                of Object.entries(
-                    item.pesos
-                )
-            ) {
-
-                if (
-                    valor === null ||
-                    [
-                        "string",
-                        "number",
-                        "boolean"
-                    ].includes(
-                        typeof valor
-                    )
-                ) {
-
-                    compacto.pesos[
-                        clave
-                    ] = valor;
-
-                }
-
-            }
-
-        }
-
-
-        return this.limpiarUndefined(
-            compacto
-        );
-
-    }
-
-
-    compactarListaRanking(
-        lista
-    ) {
-
-        if (
-            !Array.isArray(
-                lista
-            )
-        ) {
-
-            return [];
-
-        }
-
-
-        return lista.map(
-
-            item =>
-                this.compactarItemRanking(
-                    item
-                )
-
-        );
-
-    }
-
-
-    /*================================================================
         GUARDAR
     ================================================================*/
 
@@ -424,14 +271,6 @@ export default class PrediccionService {
 
                 rankingCompleto = [],
 
-                top10 = [],
-
-                top20 = [],
-
-                equipoTitular = [],
-
-                equipoSuplente = [],
-
                 ...cabeceraOriginal
 
             } = prediccion;
@@ -457,54 +296,7 @@ export default class PrediccionService {
                 ...cabeceraOriginal,
 
 
-                /*
-                 * v2.2.0:
-                 * estos cuatro conjuntos se conservan en la cabecera,
-                 * pero en formato compacto. El detalle completo vive
-                 * solamente en /ranking/{numero}.
-                 */
-
-                top10:
-                    this.compactarListaRanking(
-                        top10
-                    ),
-
-                top20:
-                    this.compactarListaRanking(
-                        top20
-                    ),
-
-                equipoTitular:
-                    this.compactarListaRanking(
-                        equipoTitular
-                    ),
-
-                equipoSuplente:
-                    this.compactarListaRanking(
-                        equipoSuplente
-                    ),
-
-
                 id,
-
-
-                /*
-                 * v2.3.0:
-                 * estado operativo explícito. Se respetan valores ya
-                 * provistos por el llamador para mantener compatibilidad.
-                 */
-
-                estado:
-                    cabeceraOriginal.estado ??
-                    "PENDIENTE",
-
-                activa:
-                    cabeceraOriginal.activa ??
-                    true,
-
-                reemplazada:
-                    cabeceraOriginal.reemplazada ??
-                    false,
 
 
                 totalRanking:
@@ -1658,24 +1450,7 @@ export default class PrediccionService {
 
                     item.evaluacion
                         ?.realizada !==
-                        true &&
-
-                    item.activa !==
-                        false &&
-
-                    item.reemplazada !==
-                        true &&
-
-                    ![
-                        "REEMPLAZADA",
-                        "SUPERADA",
-                        "ANULADA"
-                    ].includes(
-                        String(
-                            item.estado ||
-                            ""
-                        ).toUpperCase()
-                    )
+                        true
 
             );
 
@@ -1747,224 +1522,6 @@ export default class PrediccionService {
             pendiente !==
             null
         );
-
-    }
-
-
-    /*================================================================
-        MARCAR REEMPLAZADA
-        NUEVO v2.3.0
-    ================================================================*/
-
-    async marcarReemplazada(
-
-        id,
-
-        reemplazadaPor,
-
-        motivo =
-            "REEMPLAZO_MANUAL",
-
-        metadata = {}
-
-    ) {
-
-        try {
-
-            if (
-                !id
-            ) {
-
-                throw new Error(
-                    "No se recibió ID de la predicción a reemplazar."
-                );
-
-            }
-
-
-            if (
-                !reemplazadaPor
-            ) {
-
-                throw new Error(
-                    "No se recibió ID de la predicción reemplazante."
-                );
-
-            }
-
-
-            if (
-                String(id) ===
-                String(reemplazadaPor)
-            ) {
-
-                throw new Error(
-                    "Una predicción no puede reemplazarse por sí misma."
-                );
-
-            }
-
-
-            const referencia =
-                doc(
-
-                    db,
-
-                    this.coleccion,
-
-                    String(
-                        id
-                    )
-
-                );
-
-
-            const snapshot =
-                await getDoc(
-                    referencia
-                );
-
-
-            if (
-                !snapshot.exists()
-            ) {
-
-                throw new Error(
-                    `La predicción ${id} no existe.`
-                );
-
-            }
-
-
-            const ahora =
-                new Date()
-                    .toISOString();
-
-
-            const datos =
-                this.limpiarUndefined({
-
-                    estado:
-                        "REEMPLAZADA",
-
-                    activa:
-                        false,
-
-                    reemplazada:
-                        true,
-
-                    reemplazadaPor:
-                        String(
-                            reemplazadaPor
-                        ),
-
-                    motivoReemplazo:
-                        String(
-                            motivo ||
-                            "REEMPLAZO_MANUAL"
-                        ),
-
-                    reemplazadaEn:
-                        ahora,
-
-                    reemplazo: {
-
-                        prediccionAnterior:
-                            String(
-                                id
-                            ),
-
-                        prediccionNueva:
-                            String(
-                                reemplazadaPor
-                            ),
-
-                        motivo:
-                            String(
-                                motivo ||
-                                "REEMPLAZO_MANUAL"
-                            ),
-
-                        fecha:
-                            ahora,
-
-                        ...(
-                            metadata &&
-                            typeof metadata ===
-                                "object" &&
-                            !Array.isArray(
-                                metadata
-                            )
-
-                                ? metadata
-
-                                : {}
-                        )
-
-                    },
-
-                    persistencia: {
-
-                        ...(
-                            snapshot.data()
-                                ?.persistencia ||
-                            {}
-                        ),
-
-                        actualizadoEn:
-                            ahora
-
-                    }
-
-                });
-
-
-            await setDoc(
-
-                referencia,
-
-                datos,
-
-                {
-                    merge:
-                        true
-                }
-
-            );
-
-
-            console.log(
-
-                `Predicción reemplazada: ${id} -> ${reemplazadaPor}`
-
-            );
-
-
-            return await this
-                .obtener(
-
-                    id,
-
-                    {
-                        incluirRanking:
-                            false
-                    }
-
-                );
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Error marcando predicción reemplazada:",
-                error
-            );
-
-
-            throw error;
-
-        }
 
     }
 
@@ -2259,18 +1816,7 @@ export default class PrediccionService {
                 true,
 
             limpiezaUndefined:
-                true,
-
-            controlReemplazos:
-                true,
-
-            estadosOperativos:
-                [
-                    "PENDIENTE",
-                    "REEMPLAZADA",
-                    "SUPERADA",
-                    "ANULADA"
-                ]
+                true
 
         };
 
