@@ -21,7 +21,7 @@ export default class ControlOperativoResultados {
         panelCiclo = null
     } = {}) {
 
-        this.version = "1.5.0";
+        this.version = "1.6.0";
 
         this.entorno =
             entorno;
@@ -1870,6 +1870,9 @@ export default class ControlOperativoResultados {
                 comparacionPrediccion23:
                     null,
 
+                auditoriaFidelidadTemporal:
+                    null,
+
                 integridadReal:
                     null,
 
@@ -2116,6 +2119,19 @@ export default class ControlOperativoResultados {
                 );
 
 
+            this.escenarioSimulacion.auditoriaFidelidadTemporal =
+                this.auditarFidelidadTemporal({
+                    historialTemporal: historial22,
+                    estadisticasTemporales: estadisticas22,
+                    prediccionBase: prediccion23Base,
+                    prediccionAdaptativa: prediccion23Adaptativa,
+                    pesosActivos: pesosBaseSimulacion,
+                    pesosPropuestos: resumenOpt.pesosPropuestos ?? null,
+                    semanaEsperada: Number(this.escenarioSimulacion.semana) + 1,
+                    fechaEsperada: fecha23
+                });
+
+
             const integridadDespues = {
                 evaluacionesPersistidas: Array.isArray(this.entorno.evaluacionesPersistidas)
                     ? this.entorno.evaluacionesPersistidas.length
@@ -2300,6 +2316,204 @@ export default class ControlOperativoResultados {
             salen:nb.filter(n=>!na.includes(n)),
             liderBase:topBase[0]?.numero??null,
             liderAdaptativo:topAdapt[0]?.numero??null
+        };
+    }
+
+
+
+    auditarFidelidadTemporal({
+        historialTemporal,
+        estadisticasTemporales,
+        prediccionBase,
+        prediccionAdaptativa,
+        pesosActivos,
+        pesosPropuestos,
+        semanaEsperada,
+        fechaEsperada
+    }={}) {
+
+        const controles = [];
+
+        const agregar = (codigo, ok, detalle, valor = null) => {
+            controles.push({
+                codigo,
+                ok: !!ok,
+                detalle,
+                valor
+            });
+        };
+
+        const historial = Array.isArray(historialTemporal)
+            ? historialTemporal
+            : [];
+
+        const semanasNumericas = historial.map(x => Number(x?.semana));
+        const semanaFinal = semanasNumericas.at(-1) ?? null;
+
+        agregar(
+            "HISTORIAL_22",
+            historial.length === 22,
+            "El entorno temporal contiene exactamente 22 semanas.",
+            historial.length
+        );
+
+        agregar(
+            "SEMANAS_CONTINUAS",
+            semanasNumericas.every((n, i) => n === i + 1),
+            "Las semanas temporales forman una secuencia continua 1–22.",
+            semanasNumericas
+        );
+
+        agregar(
+            "SEMANA_22_SIMULADA",
+            semanaFinal === 22 &&
+            historial.at(-1)?.esSimulacion === true &&
+            Array.isArray(historial.at(-1)?.numeros) &&
+            historial.at(-1).numeros.length === 10,
+            "La última semana es la 22 simulada con 10 números.",
+            {
+                semana: semanaFinal,
+                numeros: historial.at(-1)?.numeros?.length ?? 0
+            }
+        );
+
+        agregar(
+            "ESTADISTICAS_100",
+            Array.isArray(estadisticasTemporales) &&
+            estadisticasTemporales.length === 100,
+            "La base estadística temporal contiene los 100 números.",
+            estadisticasTemporales?.length ?? null
+        );
+
+        const sumaActivos = Number(
+            Object.values(pesosActivos ?? {})
+                .reduce((t,v)=>t+Number(v??0),0)
+                .toFixed(6)
+        );
+
+        agregar(
+            "PESOS_ACTIVOS_100",
+            Math.abs(sumaActivos - 100) < 0.01,
+            "Los pesos activos usados por la variante base suman 100.",
+            sumaActivos
+        );
+
+        const rankingBase =
+            Array.isArray(prediccionBase?.rankingCompleto)
+                ? prediccionBase.rankingCompleto
+                : Array.isArray(prediccionBase?.ranking)
+                    ? prediccionBase.ranking
+                    : [];
+
+        agregar(
+            "RANKING_BASE_100",
+            rankingBase.length === 100,
+            "La predicción temporal base contiene ranking completo de 100 números.",
+            rankingBase.length
+        );
+
+        const numerosRanking = rankingBase.map(x => Number(x?.numero));
+
+        agregar(
+            "RANKING_BASE_UNICO",
+            rankingBase.length === 100 &&
+            new Set(numerosRanking).size === 100,
+            "Los 100 números del ranking base son únicos.",
+            new Set(numerosRanking).size
+        );
+
+        const ordenes = rankingBase.map(x => Number(x?.orden));
+        agregar(
+            "ORDEN_BASE_SECUENCIAL",
+            rankingBase.length === 100 &&
+            ordenes.every((orden, i) => orden === i + 1),
+            "El campo orden del ranking base es secuencial 1–100.",
+            ordenes.slice(0,10)
+        );
+
+        agregar(
+            "SEMANA_OBJETIVO_23",
+            Number(
+                prediccionBase?.semanaObjetivo ??
+                prediccionBase?.semana?.numero ??
+                prediccionBase?.semana
+            ) === Number(semanaEsperada),
+            "La predicción temporal apunta a la semana 23.",
+            prediccionBase?.semanaObjetivo ??
+            prediccionBase?.semana?.numero ??
+            prediccionBase?.semana ??
+            null
+        );
+
+        agregar(
+            "FECHA_OBJETIVO",
+            String(
+                prediccionBase?.fechaObjetivo ??
+                prediccionBase?.semana?.fecha ??
+                ""
+            ) === String(fechaEsperada ?? ""),
+            "La fecha objetivo temporal coincide con semana 23.",
+            prediccionBase?.fechaObjetivo ??
+            prediccionBase?.semana?.fecha ??
+            null
+        );
+
+        agregar(
+            "SIN_PERSISTENCIA_BASE",
+            prediccionBase?.simulacion?.persistenciaFirestore === false &&
+            Number(prediccionBase?.simulacion?.escriturasFirestore) === 0,
+            "La predicción base declara cero persistencia.",
+            prediccionBase?.simulacion ?? null
+        );
+
+        if (prediccionAdaptativa) {
+            const sumaPropuestos = Number(
+                Object.values(pesosPropuestos ?? {})
+                    .reduce((t,v)=>t+Number(v??0),0)
+                    .toFixed(6)
+            );
+
+            agregar(
+                "PESOS_PROPUESTOS_100",
+                Math.abs(sumaPropuestos - 100) < 0.01,
+                "Los pesos propuestos de la variante adaptativa suman 100.",
+                sumaPropuestos
+            );
+
+            const rankingAdapt =
+                Array.isArray(prediccionAdaptativa?.rankingCompleto)
+                    ? prediccionAdaptativa.rankingCompleto
+                    : Array.isArray(prediccionAdaptativa?.ranking)
+                        ? prediccionAdaptativa.ranking
+                        : [];
+
+            agregar(
+                "RANKING_ADAPTATIVO_100",
+                rankingAdapt.length === 100,
+                "La variante adaptativa contiene ranking completo de 100 números.",
+                rankingAdapt.length
+            );
+
+            agregar(
+                "SIN_PERSISTENCIA_ADAPTATIVA",
+                prediccionAdaptativa?.simulacion?.persistenciaFirestore === false &&
+                Number(prediccionAdaptativa?.simulacion?.escriturasFirestore) === 0,
+                "La predicción adaptativa declara cero persistencia.",
+                prediccionAdaptativa?.simulacion ?? null
+            );
+        }
+
+        const fallidos = controles.filter(x => !x.ok);
+
+        return {
+            esquema: "AUDITORIA_FIDELIDAD_TEMPORAL_V1",
+            versionControl: this.version,
+            ejecutadaEn: new Date().toISOString(),
+            totalControles: controles.length,
+            aprobados: controles.length - fallidos.length,
+            fallidos: fallidos.length,
+            valida: fallidos.length === 0,
+            controles
         };
     }
 
@@ -2578,6 +2792,50 @@ export default class ControlOperativoResultados {
                 }
 
 
+                ${
+                    escenario.auditoriaFidelidadTemporal
+                        ? `
+                        <div class="resultado-simulacion__auditoria">
+                            <div class="resultado-simulacion__adaptativo-titulo">
+                                <strong>Auditoría de fidelidad temporal</strong>
+                                <span>${escenario.auditoriaFidelidadTemporal.valida ? "APROBADA" : "REVISAR"}</span>
+                            </div>
+
+                            <div class="resultado-simulacion__auditoria-resumen">
+                                <div>
+                                    <span>Controles</span>
+                                    <strong>${escenario.auditoriaFidelidadTemporal.totalControles}</strong>
+                                </div>
+                                <div>
+                                    <span>Aprobados</span>
+                                    <strong>${escenario.auditoriaFidelidadTemporal.aprobados}</strong>
+                                </div>
+                                <div>
+                                    <span>Fallidos</span>
+                                    <strong>${escenario.auditoriaFidelidadTemporal.fallidos}</strong>
+                                </div>
+                                <div>
+                                    <span>Resultado</span>
+                                    <strong>${escenario.auditoriaFidelidadTemporal.valida ? "VÁLIDA" : "REVISAR"}</strong>
+                                </div>
+                            </div>
+
+                            <div class="resultado-simulacion__auditoria-lista">
+                                ${escenario.auditoriaFidelidadTemporal.controles.map(control => `
+                                    <div class="${control.ok ? "ok" : "error"}">
+                                        <span>${control.ok ? "✓" : "✕"}</span>
+                                        <div>
+                                            <strong>${this.escapeHTML(control.codigo)}</strong>
+                                            <small>${this.escapeHTML(control.detalle)}</small>
+                                        </div>
+                                    </div>
+                                `).join("")}
+                            </div>
+                        </div>`
+                        : ""
+                }
+
+
                 <div class="resultado-simulacion__estado-real">
                     <strong>
                         Estado real preservado
@@ -2600,10 +2858,11 @@ export default class ControlOperativoResultados {
                     </strong>
 
                     <p>
-                        El ciclo de simulación ya alcanza la semana 23.
-                        La próxima etapa será auditar la fidelidad del
-                        entorno temporal frente al flujo real y comparar
-                        escenarios de pesos sin persistirlos.
+                        El ciclo simulado 22 → 23 ya incluye auditoría
+                        estructural de fidelidad. La siguiente etapa puede
+                        incorporar múltiples escenarios de resultado y
+                        comparar sensibilidad, estabilidad y cambios del
+                        TOP10 sin persistir información.
                     </p>
                 </div>
 

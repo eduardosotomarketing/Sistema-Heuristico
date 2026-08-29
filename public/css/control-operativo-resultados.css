@@ -479,3 +479,14 @@
 .resultado-simulacion__auditoria-lista>div>div{display:grid;gap:2px}
 .resultado-simulacion__auditoria-lista small{font-size:11px;opacity:.72}
 @media(max-width:700px){.resultado-simulacion__auditoria-resumen{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Control Operativo v1.6.0 - Auditoría fidelidad temporal */
+.resultado-simulacion__auditoria{margin-top:16px;padding:14px;border:1px solid #d9dde1;border-radius:11px;background:#fff}
+.resultado-simulacion__auditoria-resumen{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.resultado-simulacion__auditoria-resumen>div{display:grid;gap:4px;padding:10px;border:1px solid #e2e5e8;border-radius:9px;background:#fafbfc}
+.resultado-simulacion__auditoria-resumen span{font-size:11px;opacity:.68}
+.resultado-simulacion__auditoria-lista{display:grid;gap:7px}
+.resultado-simulacion__auditoria-lista>div{display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border:1px solid #e2e5e8;border-radius:8px}
+.resultado-simulacion__auditoria-lista>div>div{display:grid;gap:2px}
+.resultado-simulacion__auditoria-lista small{font-size:11px;opacity:.72}
+@media(max-width:700px){.resultado-simulacion__auditoria-resumen{grid-template-columns:repeat(2,minmax(0,1fr))}}
