@@ -246,3 +246,236 @@
     }
 
 }
+
+/* ================================================================
+   MODO OBSERVADO / SIMULACIÓN
+   Control Operativo de Resultados v1.3.0
+   Agregar al final de css/control-operativo-resultados.css
+================================================================ */
+
+.resultado-modo {
+    margin-bottom: 18px;
+    padding: 16px;
+    border: 1px solid #d9dde1;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.resultado-modo__titulo {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.resultado-modo__titulo span {
+    font-size: 12px;
+    opacity: .68;
+}
+
+.resultado-modo__opciones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.resultado-modo__opcion {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 13px;
+    border: 1px solid #d9dde1;
+    border-radius: 11px;
+    cursor: pointer;
+}
+
+.resultado-modo__opcion.is-active {
+    border-width: 2px;
+}
+
+.resultado-modo__opcion input {
+    margin-top: 3px;
+}
+
+.resultado-modo__opcion span {
+    display: grid;
+    gap: 3px;
+}
+
+.resultado-modo__opcion small {
+    opacity: .68;
+}
+
+.resultado-modo__banner {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .035em;
+}
+
+.resultado-modo__banner--observado {
+    background: #f5f7f9;
+    border: 1px solid #d9dde1;
+}
+
+.resultado-modo__banner--simulacion {
+    background: #eef6ff;
+    border: 1px solid #b8d4f0;
+}
+
+.resultado-btn--simulacion {
+    margin-top: 10px;
+    width: 100%;
+    border-color: #6c757d;
+    background: #f5f7f9;
+    color: #212529;
+}
+
+.resultado-operativo__simulacion {
+    margin-top: 18px;
+}
+
+.resultado-simulacion {
+    padding: 20px;
+    border: 2px dashed #6c757d;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.resultado-simulacion__cabecera {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.resultado-simulacion__cabecera h3 {
+    margin: 0;
+}
+
+.resultado-simulacion__badge {
+    padding: 6px 10px;
+    border: 1px solid #b8d4f0;
+    border-radius: 999px;
+    background: #eef6ff;
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.resultado-simulacion__alerta {
+    margin: 16px 0;
+    padding: 13px;
+    border: 1px solid #b8d4f0;
+    border-radius: 10px;
+    background: #f3f8ff;
+}
+
+.resultado-simulacion__alerta > div {
+    margin-top: 4px;
+}
+
+.resultado-simulacion__metricas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.resultado-simulacion__metricas > div {
+    padding: 12px;
+    border: 1px solid #e0e4e8;
+    border-radius: 10px;
+    background: #fafbfc;
+}
+
+.resultado-simulacion__metricas span {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    opacity: .68;
+}
+
+.resultado-simulacion__metricas strong {
+    font-size: 18px;
+}
+
+.resultado-simulacion__detalle {
+    margin-bottom: 14px;
+}
+
+.resultado-simulacion__detalle p {
+    margin: 6px 0;
+}
+
+.resultado-simulacion__tabla-wrap {
+    overflow-x: auto;
+}
+
+.resultado-simulacion__tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.resultado-simulacion__tabla th,
+.resultado-simulacion__tabla td {
+    padding: 9px 10px;
+    border-bottom: 1px solid #e5e7ea;
+    text-align: left;
+}
+
+.resultado-simulacion__estado-real,
+.resultado-simulacion__proxima {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 10px;
+}
+
+.resultado-simulacion__estado-real {
+    border: 1px solid #b9ddc1;
+    background: #f1faf3;
+}
+
+.resultado-simulacion__proxima {
+    border: 1px solid #d9dde1;
+    background: #fafbfc;
+}
+
+.resultado-simulacion__proxima p {
+    margin: 5px 0 0;
+}
+
+@media (max-width: 800px) {
+    .resultado-simulacion__metricas {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .resultado-modo__titulo,
+    .resultado-simulacion__cabecera {
+        flex-direction: column;
+    }
+
+    .resultado-modo__opciones,
+    .resultado-simulacion__metricas {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* v1.4.0 - Ciclo adaptativo simulado */
+.resultado-simulacion__adaptativo{margin-top:16px;padding:14px;border:1px solid #d9dde1;border-radius:11px;background:#fafbfc}.resultado-simulacion__adaptativo-titulo{display:flex;justify-content:space-between;gap:10px;margin-bottom:12px}.resultado-simulacion__adaptativo-titulo span{font-size:12px;opacity:.68}.resultado-simulacion__adaptativo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.resultado-simulacion__adaptativo-grid>div{display:grid;gap:4px;padding:11px;border:1px solid #e2e5e8;border-radius:9px;background:#fff}.resultado-simulacion__adaptativo-grid span,.resultado-simulacion__adaptativo-grid small{font-size:11px}.resultado-simulacion__adaptativo-grid span{opacity:.68}.resultado-simulacion__adaptativo-grid strong{font-size:13px;overflow-wrap:anywhere}.resultado-simulacion__adaptativo-grid small{opacity:.75}@media(max-width:900px){.resultado-simulacion__adaptativo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.resultado-simulacion__adaptativo-titulo{flex-direction:column}.resultado-simulacion__adaptativo-grid{grid-template-columns:1fr}}
+
+/* Control Operativo v1.6.0 - Auditoría fidelidad temporal */
+.resultado-simulacion__auditoria{margin-top:16px;padding:14px;border:1px solid #d9dde1;border-radius:11px;background:#fff}
+.resultado-simulacion__auditoria-resumen{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.resultado-simulacion__auditoria-resumen>div{display:grid;gap:4px;padding:10px;border:1px solid #e2e5e8;border-radius:9px;background:#fafbfc}
+.resultado-simulacion__auditoria-resumen span{font-size:11px;opacity:.68}
+.resultado-simulacion__auditoria-lista{display:grid;gap:7px}
+.resultado-simulacion__auditoria-lista>div{display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border:1px solid #e2e5e8;border-radius:8px}
+.resultado-simulacion__auditoria-lista>div>div{display:grid;gap:2px}
+.resultado-simulacion__auditoria-lista small{font-size:11px;opacity:.72}
+@media(max-width:700px){.resultado-simulacion__auditoria-resumen{grid-template-columns:repeat(2,minmax(0,1fr))}}
