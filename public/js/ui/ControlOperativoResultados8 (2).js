@@ -21,7 +21,7 @@ export default class ControlOperativoResultados {
         panelCiclo = null
     } = {}) {
 
-        this.version = "3.3.0";
+        this.version = "3.1.0";
 
         this.entorno =
             entorno;
@@ -2619,100 +2619,66 @@ export default class ControlOperativoResultados {
                             String(id)
                     ) ?? null;
 
-        const crearEstrategia =
-            ({
-                alias,
-                tipo,
-                sourceId,
-                resumen
-            }) => ({
-                alias,
-                tipo,
-                sourceId,
-                promedioAciertosTop10:
-                    Number(
-                        resumen?.promedioAciertosTop10 ?? 0
-                    ),
-                promedioAciertosTop20:
-                    Number(
-                        resumen?.promedioAciertosTop20 ?? 0
-                    ),
-                promedioOrdenGlobal:
-                    Number(
-                        resumen?.promedioOrdenGlobal ?? 0
-                    )
-            });
-
         const estrategias = [
-            crearEstrategia({
-                alias:
+            {
+                id:
                     "BASE",
                 tipo:
                     "BASE",
-                sourceId:
-                    "BASE",
-                resumen:
-                    resumenBase
-            }),
-            crearEstrategia({
-                alias:
+                promedioAciertosTop10:
+                    resumenBase?.promedioAciertosTop10 ?? 0,
+                promedioAciertosTop20:
+                    resumenBase?.promedioAciertosTop20 ?? 0,
+                promedioOrdenGlobal:
+                    resumenBase?.promedioOrdenGlobal ?? 0
+            },
+            {
+                id:
                     "ABLACION_TF",
                 tipo:
                     "ABLACION",
-                sourceId:
-                    "SIN_TENDENCIA_FRECUENCIA",
-                resumen:
-                    buscar(
-                        auditoriaAblacion?.variantes,
-                        "SIN_TENDENCIA_FRECUENCIA"
-                    )
-            }),
-            crearEstrategia({
-                alias:
+                ...buscar(
+                    auditoriaAblacion?.variantes,
+                    "SIN_TENDENCIA_FRECUENCIA"
+                )
+            },
+            {
+                id:
                     "ABLACION_TFH",
                 tipo:
                     "ABLACION",
-                sourceId:
-                    "SIN_TENDENCIA_FRECUENCIA_HISTORICO",
-                resumen:
-                    buscar(
-                        auditoriaAblacion?.variantes,
-                        "SIN_TENDENCIA_FRECUENCIA_HISTORICO"
-                    )
-            }),
-            crearEstrategia({
-                alias:
+                ...buscar(
+                    auditoriaAblacion?.variantes,
+                    "SIN_TENDENCIA_FRECUENCIA_HISTORICO"
+                )
+            },
+            {
+                id:
                     "INVERSION_TF",
                 tipo:
                     "INVERSION",
-                sourceId:
-                    "INVERTIR_TENDENCIA_FRECUENCIA",
-                resumen:
-                    buscar(
-                        auditoriaInversion?.variantes,
-                        "INVERTIR_TENDENCIA_FRECUENCIA"
-                    )
-            }),
-            crearEstrategia({
-                alias:
+                ...buscar(
+                    auditoriaInversion?.variantes,
+                    "INVERTIR_TENDENCIA_FRECUENCIA"
+                )
+            },
+            {
+                id:
                     "INVERSION_TFH",
                 tipo:
                     "INVERSION",
-                sourceId:
-                    "INVERTIR_TENDENCIA_FRECUENCIA_HISTORICO",
-                resumen:
-                    buscar(
-                        auditoriaInversion?.variantes,
-                        "INVERTIR_TENDENCIA_FRECUENCIA_HISTORICO"
-                    )
-            })
+                ...buscar(
+                    auditoriaInversion?.variantes,
+                    "INVERTIR_TENDENCIA_FRECUENCIA_HISTORICO"
+                )
+            }
         ];
 
         const obtenerMetricaFila =
             (fila, estrategia) => {
 
                 if (
-                    estrategia.alias ===
+                    estrategia.id ===
                     "BASE"
                 ) {
                     return fila?.base ?? null;
@@ -2722,27 +2688,23 @@ export default class ControlOperativoResultados {
                     estrategia.tipo ===
                     "ABLACION"
                 ) {
-                    return (
-                        fila
-                            ?.ablaciones
-                            ?.[estrategia.sourceId] ??
-                        null
-                    );
+
+                    const id =
+                        estrategia.id ===
+                        "ABLACION_TF"
+                            ? "SIN_TENDENCIA_FRECUENCIA"
+                            : "SIN_TENDENCIA_FRECUENCIA_HISTORICO";
+
+                    return fila?.ablaciones?.[id] ?? null;
                 }
 
-                if (
-                    estrategia.tipo ===
-                    "INVERSION"
-                ) {
-                    return (
-                        fila
-                            ?.inversiones
-                            ?.[estrategia.sourceId] ??
-                        null
-                    );
-                }
+                const id =
+                    estrategia.id ===
+                    "INVERSION_TF"
+                        ? "INVERTIR_TENDENCIA_FRECUENCIA"
+                        : "INVERTIR_TENDENCIA_FRECUENCIA_HISTORICO";
 
-                return null;
+                return fila?.inversiones?.[id] ?? null;
             };
 
         const base =
@@ -2792,67 +2754,21 @@ export default class ControlOperativoResultados {
                                 continue;
                             }
 
-                            const ordenBase =
-                                Number(
-                                    mb?.promedioOrden
-                                );
-
-                            const ordenEstrategia =
-                                Number(
-                                    me?.promedioOrden
-                                );
-
                             const deltaOrden =
-                                (
-                                    Number.isFinite(
-                                        ordenBase
-                                    ) &&
-                                    Number.isFinite(
-                                        ordenEstrategia
-                                    )
-                                )
-                                    ? ordenBase -
-                                        ordenEstrategia
-                                    : 0;
+                                Number(mb.promedioOrdenReal ?? 0) -
+                                Number(me.promedioOrdenReal ?? 0);
 
                             const deltaTop10 =
-                                Number(
-                                    me?.aciertosTop10 ??
-                                    0
-                                ) -
-                                Number(
-                                    mb?.aciertosTop10 ??
-                                    0
-                                );
+                                Number(me.aciertosTop10 ?? 0) -
+                                Number(mb.aciertosTop10 ?? 0);
 
                             const deltaTop20 =
-                                Number(
-                                    me?.aciertosTop20 ??
-                                    0
-                                ) -
-                                Number(
-                                    mb?.aciertosTop20 ??
-                                    0
-                                );
+                                Number(me.aciertosTop20 ?? 0) -
+                                Number(mb.aciertosTop20 ?? 0);
 
-                            const epsilon =
-                                1e-9;
-
-                            if (
-                                deltaOrden >
-                                epsilon
-                            ) {
-                                ganaOrden++;
-                            }
-                            else if (
-                                deltaOrden <
-                                -epsilon
-                            ) {
-                                pierdeOrden++;
-                            }
-                            else {
-                                empataOrden++;
-                            }
+                            if (deltaOrden > 0) ganaOrden++;
+                            else if (deltaOrden < 0) pierdeOrden++;
+                            else empataOrden++;
 
                             if (deltaTop10 > 0) ganaTop10++;
                             else if (deltaTop10 < 0) pierdeTop10++;
@@ -2864,24 +2780,9 @@ export default class ControlOperativoResultados {
 
                             detalle.push({
                                 semana:
-                                    Number(
-                                        fila?.semana
-                                    ),
-                                ordenBase:
-                                    Number(
-                                        ordenBase
-                                            .toFixed(4)
-                                    ),
-                                ordenEstrategia:
-                                    Number(
-                                        ordenEstrategia
-                                            .toFixed(4)
-                                    ),
+                                    Number(fila?.semana),
                                 deltaOrden:
-                                    Number(
-                                        deltaOrden
-                                            .toFixed(4)
-                                    ),
+                                    Number(deltaOrden.toFixed(4)),
                                 deltaTop10,
                                 deltaTop20
                             });
@@ -2892,68 +2793,60 @@ export default class ControlOperativoResultados {
 
                         return {
                             id:
-                                estrategia.alias,
-                            sourceId:
-                                estrategia.sourceId,
+                                estrategia.id,
                             tipo:
                                 estrategia.tipo,
                             promedioAciertosTop10:
-                                estrategia
-                                    .promedioAciertosTop10,
+                                estrategia.promedioAciertosTop10,
                             promedioAciertosTop20:
-                                estrategia
-                                    .promedioAciertosTop20,
+                                estrategia.promedioAciertosTop20,
                             promedioOrdenGlobal:
-                                estrategia
-                                    .promedioOrdenGlobal,
+                                estrategia.promedioOrdenGlobal,
                             mejoraOrdenVsBase:
                                 Number(
                                     (
-                                        Number(
-                                            base
-                                                .promedioOrdenGlobal
-                                        ) -
-                                        Number(
-                                            estrategia
-                                                .promedioOrdenGlobal
-                                        )
+                                        Number(base.promedioOrdenGlobal) -
+                                        Number(estrategia.promedioOrdenGlobal)
                                     ).toFixed(4)
                                 ),
                             ventanas:
                                 n,
-                            orden: {
-                                gana:
-                                    ganaOrden,
-                                pierde:
-                                    pierdeOrden,
-                                empata:
-                                    empataOrden,
-                                tasaMejora:
-                                    n
-                                        ? Number(
-                                            (
-                                                ganaOrden /
-                                                n
-                                            ).toFixed(6)
-                                        )
-                                        : 0
-                            },
-                            top10: {
-                                gana:
-                                    ganaTop10,
-                                pierde:
-                                    pierdeTop10,
-                                empata:
-                                    empataTop10
-                            },
-                            top20: {
-                                gana:
-                                    ganaTop20,
-                                pierde:
-                                    pierdeTop20,
-                                empata:
-                                    empataTop20
-                            },
+                            orden:
+                                {
+                                    gana:
+                                        ganaOrden,
+                                    pierde:
+                                        pierdeOrden,
+                                    empata:
+                                        empataOrden,
+                                    tasaMejora:
+                                        n
+                                            ? Number(
+                                                (
+                                                    ganaOrden /
+                                                    n
+                                                ).toFixed(6)
+                                            )
+                                            : 0
+                                },
+                            top10:
+                                {
+                                    gana:
+                                        ganaTop10,
+                                    pierde:
+                                        pierdeTop10,
+                                    empata:
+                                        empataTop10
+                                },
+                            top20:
+                                {
+                                    gana:
+                                        ganaTop20,
+                                    pierde:
+                                        pierdeTop20,
+                                    empata:
+                                        empataTop20
+                                },
                             detalle
                         };
                     }
@@ -2963,31 +2856,21 @@ export default class ControlOperativoResultados {
             [...comparaciones]
                 .sort(
                     (a,b)=>
-                        Number(
-                            a.promedioOrdenGlobal
-                        ) -
-                        Number(
-                            b.promedioOrdenGlobal
-                        )
+                        Number(a.promedioOrdenGlobal) -
+                        Number(b.promedioOrdenGlobal)
                 )[0] ?? null;
 
         const mejorTop20 =
             [...comparaciones]
                 .sort(
                     (a,b)=>
-                        Number(
-                            b.promedioAciertosTop20
-                        ) -
-                        Number(
-                            a.promedioAciertosTop20
-                        )
+                        Number(b.promedioAciertosTop20) -
+                        Number(a.promedioAciertosTop20)
                 )[0] ?? null;
 
         return {
             esquema:
                 "COMPARACION_ESTRATEGIAS_WALK_FORWARD_V1",
-            revision:
-                "1.1",
             versionControl:
                 this.version,
             naturaleza:
@@ -3002,15 +2885,13 @@ export default class ControlOperativoResultados {
                 mejorTop20?.id ?? null,
             lectura:
                 (
-                    mejorOrden?.id ===
-                        "INVERSION_TFH" &&
-                    mejorTop20?.id ===
-                        "INVERSION_TFH"
+                    mejorOrden?.id === "INVERSION_TFH" &&
+                    mejorTop20?.id === "INVERSION_TFH"
                 )
                     ? "INVERSION_TFH_DOMINA_EN_ORDEN_Y_TOP20"
                     : "RESULTADO_MIXTO",
             nota:
-                "Comparación pareada corregida: usa promedioOrden por ventana y conserva alias/sourceId separados para evitar sobrescritura de identificadores. Sigue siendo diagnóstico interno sobre los mismos folds."
+                "La comparación es pareada por ventana, pero las estrategias fueron elegidas después de observar los mismos folds. Sirve para estabilidad diagnóstica, no para afirmar ventaja predictiva fuera de muestra."
         };
     }
 
@@ -7629,887 +7510,6 @@ export default class ControlOperativoResultados {
     }
 
 
-
-    analizarComponentesHistoricosTemporales({
-        historial,
-        estadisticas,
-        pesos,
-        numerosReales
-    }={}) {
-
-        const MotorManagerTemporal =
-            this.entorno?.motorManager?.constructor;
-
-        if (typeof MotorManagerTemporal !== "function") {
-            throw new Error(
-                "No está disponible el constructor temporal de MotorManager."
-            );
-        }
-
-        const manager = new MotorManagerTemporal();
-
-        manager.inicializar({
-            historial: structuredClone(historial ?? []),
-            estadisticas: structuredClone(estadisticas ?? []),
-            configuracion: {
-                pesos: structuredClone(pesos ?? {})
-            }
-        });
-
-        const resultados = manager.analizarTodos({});
-
-        const reales =
-            new Set((numerosReales ?? []).map(Number));
-
-        const definiciones = [
-            {
-                id: "frecuencia_score_historico",
-                grupo: "FRECUENCIA",
-                motor: "frecuencia",
-                componente: "scoreHistorico",
-                obtener: r =>
-                    r?.resultados?.frecuencia?.detalle?.scoreHistorico
-            },
-            {
-                id: "frecuencia_corto_3_5",
-                grupo: "FRECUENCIA",
-                motor: "frecuencia",
-                componente: "scoreCortoPlazo",
-                obtener: r =>
-                    r?.resultados?.frecuencia?.detalle?.scoreCortoPlazo
-            },
-            {
-                id: "frecuencia_mediano_10_20",
-                grupo: "FRECUENCIA",
-                motor: "frecuencia",
-                componente: "scoreMedianoPlazo",
-                obtener: r =>
-                    r?.resultados?.frecuencia?.detalle?.scoreMedianoPlazo
-            },
-            {
-                id: "frecuencia_score_tendencia",
-                grupo: "FRECUENCIA",
-                motor: "frecuencia",
-                componente: "scoreTendencia",
-                obtener: r =>
-                    r?.resultados?.frecuencia?.detalle?.scoreTendencia
-            },
-            {
-                id: "tendencia_ventana_3",
-                grupo: "TENDENCIA",
-                motor: "tendencia",
-                componente: "ventana3",
-                obtener: r =>
-                    r?.resultados?.tendencia?.detalle?.ventanas?.[3]?.score
-            },
-            {
-                id: "tendencia_ventana_5",
-                grupo: "TENDENCIA",
-                motor: "tendencia",
-                componente: "ventana5",
-                obtener: r =>
-                    r?.resultados?.tendencia?.detalle?.ventanas?.[5]?.score
-            },
-            {
-                id: "tendencia_ventana_10",
-                grupo: "TENDENCIA",
-                motor: "tendencia",
-                componente: "ventana10",
-                obtener: r =>
-                    r?.resultados?.tendencia?.detalle?.ventanas?.[10]?.score
-            },
-            {
-                id: "tendencia_ventana_20",
-                grupo: "TENDENCIA",
-                motor: "tendencia",
-                componente: "ventana20",
-                obtener: r =>
-                    r?.resultados?.tendencia?.detalle?.ventanas?.[20]?.score
-            },
-            {
-                id: "tendencia_ventana_50",
-                grupo: "TENDENCIA",
-                motor: "tendencia",
-                componente: "ventana50",
-                obtener: r =>
-                    r?.resultados?.tendencia?.detalle?.ventanas?.[50]?.score
-            },
-            {
-                id: "historico_frecuencia_relativa",
-                grupo: "HISTORICO",
-                motor: "historico",
-                componente: "frecuenciaRelativa",
-                obtener: r =>
-                    r?.resultados?.historico?.detalle?.frecuenciaRelativa ??
-                    r?.resultados?.historico?.score
-            },
-            {
-                id: "historico_posicion_frecuencia",
-                grupo: "HISTORICO",
-                motor: "historico",
-                componente: "posicionHistoricaInvertida",
-                nota:
-                    "Transformación 101-posicion: valor alto = históricamente más frecuente.",
-                obtener: r => {
-                    const posicion = Number(
-                        r?.resultados?.historico?.detalle?.posicionHistorica
-                    );
-                    return Number.isFinite(posicion)
-                        ? 101 - posicion
-                        : null;
-                }
-            }
-        ];
-
-        const promedio = lista =>
-            lista.length
-                ? lista.reduce((t,v)=>t+Number(v),0) / lista.length
-                : 0;
-
-        return definiciones.map(definicion => {
-            const vectorScores =
-                resultados
-                    .map(r => {
-                        const numero = Number(r?.numero);
-                        const score = Number(definicion.obtener(r));
-                        return {
-                            numero,
-                            real: reales.has(numero),
-                            score
-                        };
-                    })
-                    .filter(
-                        x =>
-                            Number.isFinite(x.numero) &&
-                            Number.isFinite(x.score)
-                    );
-
-            const observados =
-                vectorScores.filter(x=>x.real).map(x=>x.score);
-
-            const resto =
-                vectorScores.filter(x=>!x.real).map(x=>x.score);
-
-            const mediaObservados = promedio(observados);
-            const mediaResto = promedio(resto);
-
-            const auc =
-                this.calcularAUCDiscriminacion(vectorScores);
-
-            return {
-                id: definicion.id,
-                grupo: definicion.grupo,
-                motor: definicion.motor,
-                componente: definicion.componente,
-                nota: definicion.nota ?? null,
-                auc,
-                aucInvertida:
-                    auc == null
-                        ? null
-                        : Number((1 - Number(auc)).toFixed(6)),
-                mediaObservados:
-                    Number(mediaObservados.toFixed(6)),
-                mediaResto:
-                    Number(mediaResto.toFixed(6)),
-                deltaScore:
-                    Number(
-                        (mediaObservados - mediaResto).toFixed(6)
-                    ),
-                vectorScores
-            };
-        });
-    }
-
-
-
-    resumirEstabilidadTemporalInversion(
-        filas = []
-    ) {
-
-        const ordenadas =
-            [...(filas ?? [])]
-                .sort(
-                    (a,b)=>
-                        Number(a?.semana ?? 0) -
-                        Number(b?.semana ?? 0)
-                );
-
-        const total =
-            ordenadas.length;
-
-        const corte =
-            Math.floor(total / 2);
-
-        const segmentos = [
-            {
-                id:
-                    "TEMPRANO",
-                filas:
-                    ordenadas.slice(
-                        0,
-                        corte
-                    )
-            },
-            {
-                id:
-                    "TARDIO",
-                filas:
-                    ordenadas.slice(
-                        corte
-                    )
-            }
-        ];
-
-        const variantes = [
-            {
-                id:
-                    "INVERSION_TF",
-                sourceId:
-                    "INVERTIR_TENDENCIA_FRECUENCIA"
-            },
-            {
-                id:
-                    "INVERSION_TFH",
-                sourceId:
-                    "INVERTIR_TENDENCIA_FRECUENCIA_HISTORICO"
-            }
-        ];
-
-        const promedio =
-            valores => {
-
-                const validos =
-                    (valores ?? [])
-                        .map(Number)
-                        .filter(
-                            Number.isFinite
-                        );
-
-                if (
-                    validos.length ===
-                    0
-                ) {
-                    return null;
-                }
-
-                return (
-                    validos.reduce(
-                        (a,b)=>a+b,
-                        0
-                    ) /
-                    validos.length
-                );
-            };
-
-        const resumirSegmento =
-            (
-                filasSegmento,
-                variante
-            ) => {
-
-                let ganaOrden = 0;
-                let pierdeOrden = 0;
-                let empataOrden = 0;
-
-                const top10 = [];
-                const top20 = [];
-                const orden = [];
-                const mejorasOrden = [];
-
-                for (
-                    const fila
-                    of filasSegmento
-                ) {
-
-                    const base =
-                        fila?.base;
-
-                    const alternativa =
-                        fila
-                            ?.inversiones
-                            ?.[
-                                variante
-                                    .sourceId
-                            ];
-
-                    if (
-                        !base ||
-                        !alternativa
-                    ) {
-                        continue;
-                    }
-
-                    const ordenBase =
-                        Number(
-                            base?.promedioOrden
-                        );
-
-                    const ordenAlt =
-                        Number(
-                            alternativa
-                                ?.promedioOrden
-                        );
-
-                    if (
-                        Number.isFinite(
-                            ordenBase
-                        ) &&
-                        Number.isFinite(
-                            ordenAlt
-                        )
-                    ) {
-                        const delta =
-                            ordenBase -
-                            ordenAlt;
-
-                        mejorasOrden.push(
-                            delta
-                        );
-
-                        if (
-                            delta >
-                            1e-9
-                        ) {
-                            ganaOrden++;
-                        }
-                        else if (
-                            delta <
-                            -1e-9
-                        ) {
-                            pierdeOrden++;
-                        }
-                        else {
-                            empataOrden++;
-                        }
-                    }
-
-                    top10.push(
-                        alternativa
-                            ?.aciertosTop10
-                    );
-
-                    top20.push(
-                        alternativa
-                            ?.aciertosTop20
-                    );
-
-                    orden.push(
-                        alternativa
-                            ?.promedioOrden
-                    );
-                }
-
-                const n =
-                    ganaOrden +
-                    pierdeOrden +
-                    empataOrden;
-
-                return {
-                    ventanas:
-                        n,
-                    semanaDesde:
-                        filasSegmento
-                            ?.at(0)
-                            ?.semana ??
-                        null,
-                    semanaHasta:
-                        filasSegmento
-                            ?.at(-1)
-                            ?.semana ??
-                        null,
-                    promedioAciertosTop10:
-                        promedio(top10) ==
-                            null
-                            ? null
-                            : Number(
-                                promedio(top10)
-                                    .toFixed(4)
-                            ),
-                    promedioAciertosTop20:
-                        promedio(top20) ==
-                            null
-                            ? null
-                            : Number(
-                                promedio(top20)
-                                    .toFixed(4)
-                            ),
-                    promedioOrden:
-                        promedio(orden) ==
-                            null
-                            ? null
-                            : Number(
-                                promedio(orden)
-                                    .toFixed(4)
-                            ),
-                    mejoraOrdenVsBase:
-                        promedio(
-                            mejorasOrden
-                        ) == null
-                            ? null
-                            : Number(
-                                promedio(
-                                    mejorasOrden
-                                ).toFixed(4)
-                            ),
-                    orden: {
-                        gana:
-                            ganaOrden,
-                        pierde:
-                            pierdeOrden,
-                        empata:
-                            empataOrden,
-                        tasaMejora:
-                            n
-                                ? Number(
-                                    (
-                                        ganaOrden /
-                                        n
-                                    ).toFixed(6)
-                                )
-                                : 0
-                    }
-                };
-            };
-
-        const comparacion =
-            variantes.map(
-                variante => {
-
-                    const porSegmento = {};
-
-                    for (
-                        const segmento
-                        of segmentos
-                    ) {
-                        porSegmento[
-                            segmento.id
-                        ] =
-                            resumirSegmento(
-                                segmento.filas,
-                                variante
-                            );
-                    }
-
-                    const temprano =
-                        porSegmento
-                            .TEMPRANO;
-
-                    const tardio =
-                        porSegmento
-                            .TARDIO;
-
-                    return {
-                        id:
-                            variante.id,
-                        sourceId:
-                            variante.sourceId,
-                        temprano,
-                        tardio,
-                        persisteMejoraOrden:
-                            (
-                                temprano
-                                    ?.orden
-                                    ?.pierde ===
-                                    0 &&
-                                tardio
-                                    ?.orden
-                                    ?.pierde ===
-                                    0 &&
-                                Number(
-                                    temprano
-                                        ?.mejoraOrdenVsBase
-                                ) >
-                                    0 &&
-                                Number(
-                                    tardio
-                                        ?.mejoraOrdenVsBase
-                                ) >
-                                    0
-                            ),
-                        diferenciaMejoraOrden:
-                            Number.isFinite(
-                                Number(
-                                    temprano
-                                        ?.mejoraOrdenVsBase
-                                )
-                            ) &&
-                            Number.isFinite(
-                                Number(
-                                    tardio
-                                        ?.mejoraOrdenVsBase
-                                )
-                            )
-                                ? Number(
-                                    (
-                                        Number(
-                                            tardio
-                                                .mejoraOrdenVsBase
-                                        ) -
-                                        Number(
-                                            temprano
-                                                .mejoraOrdenVsBase
-                                        )
-                                    ).toFixed(4)
-                                )
-                                : null
-                    };
-                }
-            );
-
-        const registrosComponentes =
-            ordenadas.flatMap(
-                fila =>
-                    (
-                        fila
-                            ?.componentesHistoricos ??
-                        []
-                    )
-                        .map(
-                            x=>({
-                                semana:
-                                    Number(
-                                        fila?.semana
-                                    ),
-                                ...x
-                            })
-                        )
-            );
-
-        const idsComponentes =
-            [
-                ...new Set(
-                    registrosComponentes
-                        .map(x=>x.id)
-                )
-            ];
-
-        const componentes =
-            idsComponentes.map(
-                id => {
-
-                    const medir =
-                        filasSegmento => {
-
-                            const semanas =
-                                new Set(
-                                    filasSegmento
-                                        .map(
-                                            x =>
-                                                Number(
-                                                    x?.semana
-                                                )
-                                        )
-                                );
-
-                            const lista =
-                                registrosComponentes
-                                    .filter(
-                                        x =>
-                                            x.id ===
-                                                id &&
-                                            semanas.has(
-                                                Number(
-                                                    x.semana
-                                                )
-                                            )
-                                    );
-
-                            const auc =
-                                promedio(
-                                    lista.map(
-                                        x=>x.auc
-                                    )
-                                );
-
-                            const delta =
-                                promedio(
-                                    lista.map(
-                                        x =>
-                                            x.deltaScore
-                                    )
-                                );
-
-                            return {
-                                ventanas:
-                                    lista.length,
-                                aucPromedio:
-                                    auc == null
-                                        ? null
-                                        : Number(
-                                            auc
-                                                .toFixed(6)
-                                        ),
-                                deltaScorePromedio:
-                                    delta == null
-                                        ? null
-                                        : Number(
-                                            delta
-                                                .toFixed(6)
-                                        ),
-                                debajo05:
-                                    lista.filter(
-                                        x =>
-                                            Number(
-                                                x.auc
-                                            ) <
-                                            0.5
-                                    ).length,
-                                encima05:
-                                    lista.filter(
-                                        x =>
-                                            Number(
-                                                x.auc
-                                            ) >
-                                            0.5
-                                    ).length
-                            };
-                        };
-
-                    const temprano =
-                        medir(
-                            segmentos[0]
-                                .filas
-                        );
-
-                    const tardio =
-                        medir(
-                            segmentos[1]
-                                .filas
-                        );
-
-                    return {
-                        id,
-                        temprano,
-                        tardio,
-                        inversoEnAmbosTramos:
-                            (
-                                Number(
-                                    temprano
-                                        ?.aucPromedio
-                                ) <
-                                    0.5 &&
-                                Number(
-                                    tardio
-                                        ?.aucPromedio
-                                ) <
-                                    0.5
-                            )
-                    };
-                }
-            );
-
-        const cantidadComponentesEstables =
-            componentes.filter(
-                x =>
-                    x
-                        .inversoEnAmbosTramos
-            ).length;
-
-        return {
-            esquema:
-                "ESTABILIDAD_TEMPORAL_INVERSION_WALK_FORWARD_V1",
-            versionControl:
-                this.version,
-            naturaleza:
-                "DIAGNOSTICO_INTERNO_SEGMENTADO",
-            validacionPredictiva:
-                false,
-            totalVentanas:
-                total,
-            segmentos:
-                segmentos.map(
-                    s=>({
-                        id:
-                            s.id,
-                        ventanas:
-                            s.filas.length,
-                        semanaDesde:
-                            s.filas
-                                ?.at(0)
-                                ?.semana ??
-                            null,
-                        semanaHasta:
-                            s.filas
-                                ?.at(-1)
-                                ?.semana ??
-                            null
-                    })
-                ),
-            comparacion,
-            componentes,
-            resumenComponentes: {
-                total:
-                    componentes.length,
-                inversosEnAmbosTramos:
-                    cantidadComponentesEstables,
-                proporcion:
-                    componentes.length
-                        ? Number(
-                            (
-                                cantidadComponentesEstables /
-                                componentes.length
-                            ).toFixed(6)
-                        )
-                        : 0
-            },
-            lectura:
-                (
-                    comparacion.every(
-                        x =>
-                            x
-                                .persisteMejoraOrden
-                    ) &&
-                    cantidadComponentesEstables ===
-                        componentes.length &&
-                    componentes.length > 0
-                )
-                    ? "INVERSION_ESTABLE_EN_AMBOS_TRAMOS"
-                    : "ESTABILIDAD_PARCIAL_O_INCIERTA",
-            nota:
-                "La división temprano/tardío mide estabilidad temporal interna. No constituye un holdout independiente porque las transformaciones fueron elegidas después de observar el conjunto completo."
-        };
-    }
-
-
-    resumirComponentesHistoricosWalkForward(filas = []) {
-
-        const registros =
-            (filas ?? []).flatMap(
-                fila =>
-                    (fila?.componentesHistoricos ?? [])
-                        .map(componente => ({
-                            semana: Number(fila?.semana),
-                            ...componente
-                        }))
-            );
-
-        const ids =
-            [...new Set(registros.map(x=>x.id))];
-
-        const componentes =
-            ids.map(id => {
-                const lista =
-                    registros.filter(x=>x.id===id);
-
-                const primero = lista[0] ?? {};
-
-                const aucs =
-                    lista.map(x=>Number(x?.auc))
-                        .filter(Number.isFinite);
-
-                const deltas =
-                    lista.map(x=>Number(x?.deltaScore))
-                        .filter(Number.isFinite);
-
-                const promedio =
-                    valores =>
-                        valores.length
-                            ? valores.reduce((a,b)=>a+b,0)/valores.length
-                            : null;
-
-                const aucPromedio = promedio(aucs);
-                const deltaPromedio = promedio(deltas);
-
-                const debajo = aucs.filter(x=>x<0.5).length;
-                const encima = aucs.filter(x=>x>0.5).length;
-                const igual = aucs.filter(x=>x===0.5).length;
-
-                const proporcionDebajo =
-                    aucs.length ? debajo/aucs.length : 0;
-
-                let lectura = "NEUTRO_O_INCIERTO";
-
-                if (
-                    aucPromedio != null &&
-                    aucPromedio <= 0.40 &&
-                    proporcionDebajo >= 0.70
-                ) {
-                    lectura = "ORIENTACION_INVERSA_PERSISTENTE";
-                }
-                else if (
-                    aucPromedio != null &&
-                    aucPromedio < 0.48
-                ) {
-                    lectura = "TENDENCIA_INVERSA";
-                }
-                else if (
-                    aucPromedio != null &&
-                    aucPromedio >= 0.52
-                ) {
-                    lectura = "ORIENTACION_FAVORABLE";
-                }
-
-                return {
-                    id,
-                    grupo: primero?.grupo ?? null,
-                    motor: primero?.motor ?? null,
-                    componente: primero?.componente ?? null,
-                    ventanas: aucs.length,
-                    aucPromedio:
-                        aucPromedio == null
-                            ? null
-                            : Number(aucPromedio.toFixed(6)),
-                    aucInvertidaTeorica:
-                        aucPromedio == null
-                            ? null
-                            : Number((1-aucPromedio).toFixed(6)),
-                    deltaScorePromedio:
-                        deltaPromedio == null
-                            ? null
-                            : Number(deltaPromedio.toFixed(6)),
-                    semanasDebajo05: debajo,
-                    semanasEncima05: encima,
-                    semanasIgual05: igual,
-                    lectura,
-                    nota: primero?.nota ?? null,
-                    detalleSemanal:
-                        lista.map(x=>({
-                            semana: x.semana,
-                            auc: x.auc,
-                            deltaScore: x.deltaScore,
-                            mediaObservados: x.mediaObservados,
-                            mediaResto: x.mediaResto
-                        }))
-                };
-            });
-
-        const porGrupo =
-            ["FRECUENCIA","TENDENCIA","HISTORICO"]
-                .map(grupo => {
-                    const items =
-                        componentes.filter(x=>x.grupo===grupo);
-                    const inversos =
-                        items.filter(
-                            x =>
-                                x.lectura ===
-                                "ORIENTACION_INVERSA_PERSISTENTE"
-                        ).length;
-
-                    return {
-                        grupo,
-                        componentes: items.length,
-                        inversosPersistentes: inversos,
-                        todosInversosPersistentes:
-                            items.length > 0 &&
-                            inversos === items.length
-                    };
-                });
-
-        return {
-            esquema:
-                "AUDITORIA_COMPONENTES_HISTORICOS_WALK_FORWARD_V1",
-            versionControl: this.version,
-            naturaleza: "DIAGNOSTICO_INTERNO",
-            validacionPredictiva: false,
-            referenciaAUC: 0.5,
-            componentes,
-            porGrupo,
-            nota:
-                "Los componentes se calculan dentro de cada fold usando solo semanas anteriores al objetivo. Sigue siendo evidencia exploratoria interna."
-        };
-    }
-
-
     analizarMotoresTemporalesWalkForward({
         historial,
         estadisticas,
@@ -9510,17 +8510,6 @@ export default class ControlOperativoResultados {
                             objetivo?.numeros
                     });
 
-                const componentesHistoricos =
-                    this.analizarComponentesHistoricosTemporales({
-                        historial:
-                            pasado,
-                        estadisticas,
-                        pesos:
-                            pesosBase,
-                        numerosReales:
-                            objetivo?.numeros
-                    });
-
                 const predBase =
                     this.generarPrediccionTemporal({
                         historial:
@@ -9653,7 +8642,6 @@ export default class ControlOperativoResultados {
                     base:
                         metricaBase,
                     diagnosticoMotoresBase,
-                    componentesHistoricos,
                     ablaciones,
                     inversiones,
                     actualLookahead:
@@ -9746,16 +8734,6 @@ export default class ControlOperativoResultados {
                     filas
                 );
 
-            const auditoriaComponentesHistoricos =
-                this.resumirComponentesHistoricosWalkForward(
-                    filas
-                );
-
-            const estabilidadTemporalInversion =
-                this.resumirEstabilidadTemporalInversion(
-                    filas
-                );
-
             const snapshotDespues = {
                 totalSemanas:
                     this.entorno?.datosHistorial?.length ?? 0,
@@ -9834,8 +8812,6 @@ export default class ControlOperativoResultados {
                 auditoriaMotores,
                 diseccionBloqueHistorico,
                 discriminacionDireccional,
-                auditoriaComponentesHistoricos,
-                estabilidadTemporalInversion,
                 auditoriaTemporal: {
                     totalControles:
                         filas.length,
@@ -9971,191 +8947,9 @@ export default class ControlOperativoResultados {
                     </div>
                 </div>
 
-                <div class="walk-forward__estabilidad-temporal">
-                    <div class="walk-forward__estadistica-cabecera">
-                        <strong>Estabilidad temporal de la inversión · v3.3.0</strong>
-                        <span>
-                            comparación interna por tramos temprano y tardío
-                        </span>
-                    </div>
-
-                    <div class="walk-forward__profundidad-resumen">
-                        <div>
-                            <span>Lectura</span>
-                            <strong>
-                                ${
-                                    this.escapeHTML(
-                                        backtest
-                                            ?.estabilidadTemporalInversion
-                                            ?.lectura
-                                        ?? "—"
-                                    )
-                                }
-                            </strong>
-                        </div>
-                        <div>
-                            <span>Componentes inversos en ambos tramos</span>
-                            <strong>
-                                ${
-                                    backtest
-                                        ?.estabilidadTemporalInversion
-                                        ?.resumenComponentes
-                                        ?.inversosEnAmbosTramos
-                                    ?? 0
-                                }
-                                /
-                                ${
-                                    backtest
-                                        ?.estabilidadTemporalInversion
-                                        ?.resumenComponentes
-                                        ?.total
-                                    ?? 0
-                                }
-                            </strong>
-                        </div>
-                    </div>
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Estrategia</th>
-                                <th>Tramo</th>
-                                <th>Semanas</th>
-                                <th>T10</th>
-                                <th>T20</th>
-                                <th>Orden</th>
-                                <th>Mejora orden</th>
-                                <th>G/P/E orden</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${
-                                (
-                                    backtest
-                                        ?.estabilidadTemporalInversion
-                                        ?.comparacion ??
-                                    []
-                                )
-                                    .flatMap(x => [
-                                        {
-                                            estrategia:
-                                                x.id,
-                                            tramo:
-                                                "TEMPRANO",
-                                            ...x.temprano
-                                        },
-                                        {
-                                            estrategia:
-                                                x.id,
-                                            tramo:
-                                                "TARDIO",
-                                            ...x.tardio
-                                        }
-                                    ])
-                                    .map(x=>`
-                                        <tr>
-                                            <td>${this.escapeHTML(x.estrategia)}</td>
-                                            <td>${x.tramo}</td>
-                                            <td>${x.semanaDesde}–${x.semanaHasta}</td>
-                                            <td>${x.promedioAciertosTop10 ?? "—"}</td>
-                                            <td>${x.promedioAciertosTop20 ?? "—"}</td>
-                                            <td>${x.promedioOrden ?? "—"}</td>
-                                            <td>${x.mejoraOrdenVsBase ?? "—"}</td>
-                                            <td>
-                                                ${x.orden?.gana ?? 0}/
-                                                ${x.orden?.pierde ?? 0}/
-                                                ${x.orden?.empata ?? 0}
-                                            </td>
-                                        </tr>
-                                    `)
-                                    .join("")
-                            }
-                        </tbody>
-                    </table>
-
-                    <small>
-                        Esta segmentación comprueba si la señal inversa desaparece
-                        al avanzar en el tiempo. Sigue siendo diagnóstico interno:
-                        no debe interpretarse como validación predictiva independiente.
-                    </small>
-                </div>
-
-                <div class="walk-forward__componentes-historicos">
-                    <div class="walk-forward__estadistica-cabecera">
-                        <strong>Auditoría interna de componentes · v3.2.0</strong>
-                        <span>AUC por subcomponente · BASE sin look-ahead</span>
-                    </div>
-
-                    <div class="walk-forward__profundidad-resumen">
-                        ${
-                            (
-                                backtest
-                                    ?.auditoriaComponentesHistoricos
-                                    ?.porGrupo ??
-                                []
-                            )
-                                .map(g=>`
-                                    <div>
-                                        <span>${this.escapeHTML(g.grupo)}</span>
-                                        <strong>
-                                            ${g.inversosPersistentes}/${g.componentes}
-                                            inversos persistentes
-                                        </strong>
-                                    </div>
-                                `)
-                                .join("")
-                        }
-                    </div>
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Grupo</th>
-                                <th>Componente</th>
-                                <th>AUC media</th>
-                                <th>AUC invertida*</th>
-                                <th>Δ score</th>
-                                <th>Sem. &lt; 0.5</th>
-                                <th>Sem. &gt; 0.5</th>
-                                <th>Lectura</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${
-                                (
-                                    backtest
-                                        ?.auditoriaComponentesHistoricos
-                                        ?.componentes ??
-                                    []
-                                )
-                                    .map(x=>`
-                                        <tr>
-                                            <td>${this.escapeHTML(x.grupo)}</td>
-                                            <td>${this.escapeHTML(x.id)}</td>
-                                            <td>${x.aucPromedio ?? "—"}</td>
-                                            <td>${x.aucInvertidaTeorica ?? "—"}</td>
-                                            <td>${x.deltaScorePromedio ?? "—"}</td>
-                                            <td>${x.semanasDebajo05}</td>
-                                            <td>${x.semanasEncima05}</td>
-                                            <td>${this.escapeHTML(x.lectura)}</td>
-                                        </tr>
-                                    `)
-                                    .join("")
-                            }
-                        </tbody>
-                    </table>
-
-                    <small>
-                        * AUC invertida = 1 − AUC; solo diagnóstico.
-                        Para posición histórica se usa 101 − posición para conservar
-                        la semántica “valor alto = históricamente más frecuente”.
-                        No se modifica ningún motor real.
-                    </small>
-                </div>
-
                 <div class="walk-forward__comparacion-estrategias">
                     <div class="walk-forward__estadistica-cabecera">
-                        <strong>Comparación pareada · Base vs Ablación vs Inversión · corregida v3.1.1</strong>
+                        <strong>Comparación pareada · Base vs Ablación vs Inversión</strong>
                         <span>
                             estabilidad de la mejora entre las 13 ventanas
                         </span>
@@ -11911,7 +10705,7 @@ export default class ControlOperativoResultados {
                     <div class="laboratorio-escenarios__intro">
                         <div>
                             <strong>
-                                Laboratorio de Escenarios · v3.3.0
+                                Laboratorio de Escenarios · v3.1.0
                             </strong>
                             <p>
                                 Ejecuta 5 escenarios temporales y compara estabilidad,
@@ -11935,7 +10729,7 @@ export default class ControlOperativoResultados {
                         <div class="banco-escenarios__intro">
                             <div>
                                 <strong>
-                                    Banco de Escenarios Reproducible · v3.3.0
+                                    Banco de Escenarios Reproducible · v3.1.0
                                 </strong>
                                 <p>
                                     Ejecuta 30 escenarios deterministas con semilla fija,
@@ -11960,7 +10754,7 @@ export default class ControlOperativoResultados {
                         <div class="walk-forward-panel__intro">
                             <div>
                                 <strong>
-                                    Backtest Técnico Walk-Forward · v3.3.0
+                                    Backtest Técnico Walk-Forward · v3.1.0
                                 </strong>
                                 <p>
                                     Reconstruye cada predicción usando únicamente

@@ -490,3 +490,152 @@
 .resultado-simulacion__auditoria-lista>div>div{display:grid;gap:2px}
 .resultado-simulacion__auditoria-lista small{font-size:11px;opacity:.72}
 @media(max-width:700px){.resultado-simulacion__auditoria-resumen{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ================================================================
+   CONTROL OPERATIVO v2.6.0
+   AUDITORÍA WALK-FORWARD POR MOTOR
+   Agregar al final de control-operativo-resultados.css
+================================================================ */
+
+.walk-forward__motores {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #e2e5e8;
+    border-radius: 8px;
+    background: #fff;
+    overflow-x: auto;
+}
+
+.walk-forward__motores small {
+    display: block;
+    margin-top: 8px;
+    opacity: .72;
+    line-height: 1.5;
+}
+
+/* ================================================================
+   CONTROL OPERATIVO v2.7.0
+   ABLACIÓN CONTRAFACTUAL WALK-FORWARD
+================================================================ */
+
+.walk-forward__ablacion {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #e2e5e8;
+    border-radius: 8px;
+    background: #fff;
+    overflow-x: auto;
+}
+
+.walk-forward__ablacion small {
+    display: block;
+    margin-top: 8px;
+    opacity: .72;
+    line-height: 1.5;
+}
+
+/* ================================================================
+   CONTROL OPERATIVO v2.9.0
+   DISCRIMINACIÓN DIRECCIONAL
+================================================================ */
+
+.walk-forward__discriminacion {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #e2e5e8;
+    border-radius: 8px;
+    background: #fff;
+    overflow-x: auto;
+}
+
+.walk-forward__discriminacion small {
+    display: block;
+    margin-top: 8px;
+    opacity: .72;
+    line-height: 1.5;
+}
+
+
+/* ================================================================
+   CONTROL OPERATIVO v3.0.0
+   INVERSIÓN CONTRAFACTUAL DE SCORES
+================================================================ */
+
+.walk-forward__inversion {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #e2e5e8;
+    border-radius: 8px;
+    background: #fff;
+    overflow-x: auto;
+}
+
+.walk-forward__inversion small {
+    display: block;
+    margin-top: 8px;
+    opacity: .72;
+    line-height: 1.5;
+}
+
+/* ================================================================
+   CONTROL OPERATIVO v3.1.0
+   COMPARACIÓN PAREADA DE ESTRATEGIAS
+================================================================ */
+
+.walk-forward__comparacion-estrategias {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #e2e5e8;
+    border-radius: 8px;
+    background: #fff;
+    overflow-x: auto;
+}
+
+.walk-forward__comparacion-estrategias small {
+    display: block;
+    margin-top: 8px;
+    opacity: .72;
+    line-height: 1.5;
+}
+
+/* ================================================================
+   CONTROL OPERATIVO v3.2.0
+   AUDITORÍA INTERNA DE COMPONENTES HISTÓRICOS
+================================================================ */
+
+.walk-forward__componentes-historicos {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #e2e5e8;
+    border-radius: 8px;
+    background: #fff;
+    overflow-x: auto;
+}
+
+.walk-forward__componentes-historicos small {
+    display: block;
+    margin-top: 8px;
+    opacity: .72;
+    line-height: 1.5;
+}
+
+/* ================================================================
+   CONTROL OPERATIVO v3.3.0
+   ESTABILIDAD TEMPORAL DE LA INVERSIÓN
+================================================================ */
+
+.walk-forward__estabilidad-temporal {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #e2e5e8;
+    border-radius: 8px;
+    background: #fff;
+    overflow-x: auto;
+}
+
+.walk-forward__estabilidad-temporal small {
+    display: block;
+    margin-top: 8px;
+    opacity: .72;
+    line-height: 1.5;
+}
